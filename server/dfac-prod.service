@@ -1,6 +1,6 @@
 [Unit]
 
-Description=Downforacross Prod Server
+Description=Crosswithfriends Prod Server
 After=network-online.target
 Wants=network-online.target
 
