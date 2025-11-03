@@ -467,7 +467,7 @@ export default class Toolbar extends Component {
       return (
         <Flex className="toolbar--mobile" vAlignContent="center">
           <Flex className="toolbar--mobile--top" grow={1} vAlignContent="center">
-            <Link to="/">DFAC</Link>{' '}
+            <Link to="/">CWF</Link>{' '}
             {!expandMenu ? (
               <>
                 <Clock

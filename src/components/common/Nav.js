@@ -54,7 +54,7 @@ function showInfo() {
         <p>
           Cross with Friends is an online website for sharing crosswords and playing collaboratively with
           friends in real time. Join the&nbsp;
-          <a href="https://discord.gg/cncyyVE8QM" target="_blank" rel="noreferrer">
+          <a href="https://discord.gg/RmjCV8EZ73" target="_blank" rel="noreferrer">
             community Discord
           </a>
           &nbsp;for more discussion.
