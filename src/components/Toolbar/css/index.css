@@ -108,6 +108,7 @@ code {
 
 .toolbar--mobile {
   height: 48px;
+  padding: 0 16px 0 16px;
   background-color: var(--main-blue);
   justify-content: space-between;
   font-size: 14pt;
@@ -116,7 +117,6 @@ code {
 
 .toolbar--mobile a:first-child {
   color: white;
-  margin-left: 16px;
   text-decoration: none;
   font-weight: 600;
 }
@@ -143,8 +143,4 @@ code {
 
 .toolbar--mobile .clock {
   color: white;
-}
-
-.toolbar--mobile .toolbar--expand:last-child {
-  margin-right: 16px;
 }
