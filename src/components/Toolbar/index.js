@@ -269,9 +269,9 @@ export default class Toolbar extends Component {
   renderExpandMenuButton() {
     const {expandMenu} = this.props;
     return expandMenu ? (
-      <AiOutlineMenuFold onClick={this.handleToggleExpandMenu} className="toolbar--expand" />
+      <AiOutlineMenuFold onClick={this.handleToggleExpandMenu} />
     ) : (
-      <AiOutlineMenuUnfold onClick={this.handleToggleExpandMenu} className="toolbar--expand" />
+      <AiOutlineMenuUnfold onClick={this.handleToggleExpandMenu} />
     );
   }
 
