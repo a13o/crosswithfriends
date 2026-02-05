@@ -13,7 +13,7 @@ const app = express();
 const server = new http.Server(app);
 app.use(bodyParser.json());
 const port = process.env.PORT || 3000;
-const io = socketIo(server, {pingInterval: 2000, pingTimeout: 5000});
+const io = socketIo(server, { pingInterval: 2000, pingTimeout: 5000 });
 
 // ======== HTTP Server Config ==========
 
@@ -40,7 +40,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 function logAllEvents(log: typeof console.log) {
   io.on('*', (event: any, ...args: any) => {
     try {
-      log(`[${event}]`, _.truncate(JSON.stringify(args), {length: 100}));
+      log(`[${event}]`, _.truncate(JSON.stringify(args), { length: 100 }));
     } catch (e) {
       log(`[${event}]`, args);
     }
@@ -53,6 +53,13 @@ async function runServer() {
   const socketManager = new SocketManager(io);
   socketManager.listen();
   logAllEvents(console.log);
+  console.log('--------------------------------------------------------------------------------');
+  console.log('Database Connection Details:');
+  console.log(`  Host: ${process.env.PGHOST || 'localhost'}`);
+  console.log(`  Database: ${process.env.PGDATABASE}`);
+  console.log(`  User: ${process.env.PGUSER || process.env.USER}`);
+  console.log(`  Port: ${process.env.PGPORT || 5432}`);
+  console.log('--------------------------------------------------------------------------------');
   server.listen(port, () => console.log(`Listening on port ${port}`));
   process.once('SIGUSR2', () => {
     server.close(() => {
