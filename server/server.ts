@@ -27,6 +27,14 @@ if (process.env.NODE_ENV === 'production') {
 
 app.use('/api', apiRouter);
 
+// ======== Error Handling Middleware ==========
+
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const status = err.statusCode || 500;
+  console.error(`[API Error] ${req.method} ${req.path}:`, err.message || err);
+  res.status(status).json({error: err.message || 'Internal server error'});
+});
+
 // ================== Logging ================
 
 function logAllEvents(log: typeof console.log) {
