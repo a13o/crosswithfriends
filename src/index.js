@@ -2,10 +2,10 @@
 import classnames from 'classnames';
 import ReactDOM from 'react-dom';
 import React from 'react';
-import useMediaQuery from '@material-ui/core/useMediaQuery';
 
-import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
-import {isMobile} from './lib/jsUtils';
+import useMediaQuery from '@material-ui/core/useMediaQuery';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { isMobile } from './lib/jsUtils';
 import {
   Account,
   Battle,
@@ -55,8 +55,8 @@ const Root = () => {
 
   return (
     <Router>
-      <GlobalContext.Provider value={{toggleMolesterMoons, darkModePreference}}>
-        <div className={classnames('router-wrapper', {mobile: isMobile(), dark: darkMode})}>
+      <GlobalContext.Provider value={{ toggleMolesterMoons, darkModePreference }}>
+        <div className={classnames('router-wrapper', { mobile: isMobile(), dark: darkMode })}>
           <Switch>
             <Route exact path="/" component={WrappedWelcome} />
             <Route exact path="/fencing">
