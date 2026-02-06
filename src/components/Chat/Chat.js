@@ -106,8 +106,7 @@ export default class Chat extends Component {
     const link = document.getElementById('pathText');
     link.classList.remove('flashBlue');
     // Force reflow to restart CSS animation
-    // eslint-disable-next-line no-unused-expressions
-    link.offsetWidth;
+    void link.offsetWidth;
     link.classList.add('flashBlue');
   };
 
@@ -121,8 +120,7 @@ export default class Chat extends Component {
     const link = document.getElementById('shareText');
     link.classList.remove('flashBlue');
     // Force reflow to restart CSS animation
-    // eslint-disable-next-line no-unused-expressions
-    link.offsetWidth;
+    void link.offsetWidth;
     link.classList.add('flashBlue');
   };
 
@@ -366,9 +364,8 @@ export default class Chat extends Component {
       };
 
       return <button onClick={handleClick}> {defaultPattern} </button>;
-    } 
-      return defaultPattern;
-    
+    }
+    return defaultPattern;
   }
 
   renderMessage(message) {

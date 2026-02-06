@@ -1,7 +1,5 @@
-import Promise from 'bluebird';
 import EventEmitter from 'events';
 import _ from 'lodash';
-import {io} from 'socket.io-client';
 import * as uuid from 'uuid';
 import * as colors from '../lib/colors';
 import {emitAsync} from '../sockets/emitAsync';
