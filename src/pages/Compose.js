@@ -30,7 +30,19 @@ export default class Compose extends Component {
     });
   };
 
-  handleCreateClick = (e) => {
+  handleIncrementLimit = (amount) => {
+    this.setState(({limit}) => ({limit: limit + amount}));
+  };
+
+  handleAddTen = () => {
+    this.handleIncrementLimit(10);
+  };
+
+  handleAddFifty = () => {
+    this.handleIncrementLimit(50);
+  };
+
+  static handleCreateClick(e) {
     e.preventDefault();
     actions.getNextCid((cid) => {
       const composition = new CompositionModel(`/composition/${cid}`);
@@ -38,7 +50,7 @@ export default class Compose extends Component {
         redirect(`/composition/${cid}`);
       });
     });
-  };
+  }
 
   initializeUser() {
     this.user = getUser();
@@ -46,7 +58,7 @@ export default class Compose extends Component {
     this.handleAuth();
   }
 
-  linkToComposition(cid, {title, author}) {
+  static linkToComposition(cid, {title, author}) {
     return (
       <span>
         <a href={`/composition/${cid}/`}>{cid}</a>: {title} by {author}
@@ -65,21 +77,9 @@ export default class Compose extends Component {
         <Flex shrink={0} hAlignContent="center">
           Limit: {limit}
           &nbsp;
-          <button
-            onClick={() => {
-              this.setState({limit: limit + 10});
-            }}
-          >
-            +
-          </button>
+          <button onClick={this.handleAddTen}>+</button>
           &nbsp;
-          <button
-            onClick={() => {
-              this.setState({limit: limit + 50});
-            }}
-          >
-            ++
-          </button>
+          <button onClick={this.handleAddFifty}>++</button>
         </Flex>
         <Flex
           column
@@ -93,12 +93,12 @@ export default class Compose extends Component {
           <Flex column>
             {_.keys(compositions).length === 0 && 'Nothing found'}
             {_.keys(compositions).map((cid) => (
-              <div key={cid}>{this.linkToComposition(cid, compositions[cid])}</div>
+              <div key={cid}>{Compose.linkToComposition(cid, compositions[cid])}</div>
             ))}
           </Flex>
           <br />
           <div>
-            <button onClick={this.handleCreateClick}>New</button>
+            <button onClick={Compose.handleCreateClick}>New</button>
           </div>
         </Flex>
       </Flex>
