@@ -43,20 +43,26 @@ export interface InProgressGame {
 export interface UserStatsResponse {
   user: {
     displayName: string;
-    createdAt: string;
+    createdAt?: string;
   };
-  stats: {
+  isPrivate?: boolean;
+  stats?: {
     totalSolved: number;
     bySize: SizeStats[];
   };
-  history: SolveHistoryItem[];
-  uploads: UploadedPuzzle[];
-  inProgress: InProgressGame[];
+  history?: SolveHistoryItem[];
+  uploads?: UploadedPuzzle[];
+  inProgress?: InProgressGame[];
 }
 
-export async function getUserStats(userId: string): Promise<UserStatsResponse | null> {
+export async function getUserStats(
+  userId: string,
+  accessToken?: string | null
+): Promise<UserStatsResponse | null> {
   try {
-    const resp = await fetch(`${SERVER_URL}/api/user-stats/${userId}`);
+    const headers: Record<string, string> = {};
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    const resp = await fetch(`${SERVER_URL}/api/user-stats/${userId}`, {headers});
     if (!resp.ok) return null;
     return await resp.json();
   } catch {

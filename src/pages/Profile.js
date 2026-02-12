@@ -192,11 +192,12 @@ function UploadsTable({uploads}) {
 export default function Profile() {
   const {userId: paramUserId} = useParams();
   const history = useHistory();
-  const {isAuthenticated, user} = useContext(AuthContext);
+  const {isAuthenticated, user, accessToken} = useContext(AuthContext);
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   // If visiting /profile with no userId, redirect to own profile
   useEffect(() => {
@@ -214,10 +215,13 @@ export default function Profile() {
     }
     let cancelled = false;
     setLoading(true);
-    getUserStats(targetUserId).then((result) => {
+    getUserStats(targetUserId, accessToken).then((result) => {
       if (cancelled) return;
       if (!result) {
         setNotFound(true);
+      } else if (result.isPrivate) {
+        setIsPrivate(true);
+        setData(result);
       } else {
         setData(result);
       }
@@ -226,7 +230,7 @@ export default function Profile() {
     return () => {
       cancelled = true;
     };
-  }, [targetUserId]);
+  }, [targetUserId, accessToken]);
 
   const isOwnProfile = isAuthenticated && user?.id === targetUserId;
 
@@ -254,7 +258,13 @@ export default function Profile() {
           </div>
         )}
 
-        {!loading && data && (
+        {!loading && isPrivate && !isOwnProfile && (
+          <div className="profile--not-found">
+            <p>This profile is private.</p>
+          </div>
+        )}
+
+        {!loading && data && !isPrivate && (
           <>
             {isOwnProfile && !user?.emailVerified && (
               <div className="profile--verify-banner">

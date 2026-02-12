@@ -18,6 +18,7 @@ import {
   verifyPassword,
   markEmailVerified,
   findUserByEmail,
+  updateProfileVisibility,
   EmailCollisionError,
   UserRow,
 } from '../model/user';
@@ -321,6 +322,7 @@ router.get('/me', requireAuth, async (req, res) => {
     authProvider: user.auth_provider,
     hasPassword: user.has_password,
     hasGoogle: user.has_google,
+    profileIsPublic: !!user.profile_is_public,
   });
 });
 
@@ -333,6 +335,17 @@ router.post('/change-display-name', requireAuth, async (req, res) => {
   }
   await updateDisplayName(req.authUser!.userId, displayName);
   res.json({ok: true, displayName});
+});
+
+// POST /api/auth/profile-visibility
+router.post('/profile-visibility', requireAuth, async (req, res) => {
+  const {isPublic} = req.body;
+  if (typeof isPublic !== 'boolean') {
+    res.status(400).json({error: 'isPublic must be a boolean'});
+    return;
+  }
+  await updateProfileVisibility(req.authUser!.userId, isPublic);
+  res.json({ok: true, profileIsPublic: isPublic});
 });
 
 // POST /api/auth/change-password

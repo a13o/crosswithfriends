@@ -7,6 +7,7 @@ export interface AuthUser {
   emailVerified?: boolean;
   hasPassword?: boolean;
   hasGoogle?: boolean;
+  profileIsPublic?: boolean;
 }
 
 export interface AuthTokens {
@@ -112,6 +113,10 @@ async function authedPost(accessToken: string, path: string, body: Record<string
 
 export async function changeDisplayName(accessToken: string, displayName: string): Promise<void> {
   await authedPost(accessToken, '/api/auth/change-display-name', {displayName});
+}
+
+export async function toggleProfileVisibility(accessToken: string, isPublic: boolean): Promise<void> {
+  await authedPost(accessToken, '/api/auth/profile-visibility', {isPublic});
 }
 
 export async function changePassword(

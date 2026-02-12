@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-bind */
 import './css/account.css';
 
 import React, {useContext, useState, useEffect} from 'react';
@@ -17,6 +18,7 @@ import {
   getLinkGoogleUrl,
   unlinkGoogle,
   deleteAccount,
+  toggleProfileVisibility,
 } from '../api/auth';
 
 function AccountSection({title, children}) {
@@ -87,6 +89,44 @@ function DisplayNameSection({user, accessToken, onSaved}) {
           Save
         </Button>
       </div>
+    </AccountSection>
+  );
+}
+
+function ProfileVisibilitySection({user, accessToken, onSaved}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const isPublic = !!user.profileIsPublic;
+
+  const handleToggle = async () => {
+    setError('');
+    setSaving(true);
+    try {
+      await toggleProfileVisibility(accessToken, !isPublic);
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <AccountSection title="Profile Visibility">
+      <Typography variant="body2">
+        Your profile is currently <strong>{isPublic ? 'Public' : 'Private'}</strong>.
+        {isPublic
+          ? ' Other users can see your stats and solve history.'
+          : ' Only you can see your stats and solve history.'}
+      </Typography>
+      <Button size="small" variant="outlined" onClick={handleToggle} disabled={saving}>
+        {isPublic ? 'Make Private' : 'Make Public'}
+      </Button>
+      {error && (
+        <Typography color="error" variant="caption">
+          {error}
+        </Typography>
+      )}
     </AccountSection>
   );
 }
@@ -498,6 +538,7 @@ export default function Account() {
         {isAuthenticated ? (
           <>
             <DisplayNameSection user={user} accessToken={accessToken} onSaved={refreshUser} />
+            <ProfileVisibilitySection user={user} accessToken={accessToken} onSaved={refreshUser} />
             <EmailSection user={user} accessToken={accessToken} />
             <PasswordSection user={user} accessToken={accessToken} onSaved={refreshUser} />
             <GoogleSection user={user} accessToken={accessToken} onSaved={refreshUser} />

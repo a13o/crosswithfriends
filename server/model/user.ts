@@ -20,6 +20,7 @@ export interface UserRow {
   created_at: Date;
   updated_at: Date;
   email_verified_at?: Date | null;
+  profile_is_public: boolean;
 }
 
 export interface UserProfile extends UserRow {
@@ -114,7 +115,7 @@ export async function findOrCreateGoogleUser(
 
 export async function getUserById(id: string): Promise<UserRow | null> {
   const res = await pool.query(
-    `SELECT id, email, display_name, auth_provider, oauth_id, created_at, updated_at
+    `SELECT id, email, display_name, auth_provider, oauth_id, created_at, updated_at, profile_is_public
      FROM users
      WHERE id = $1 AND deleted_at IS NULL`,
     [id]
@@ -150,7 +151,7 @@ export async function getUserIdByDfacId(dfacId: string): Promise<string | null> 
 
 export async function getUserProfile(id: string): Promise<UserProfile | null> {
   const res = await pool.query(
-    `SELECT id, email, password_hash, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at
+    `SELECT id, email, password_hash, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at, profile_is_public
      FROM users
      WHERE id = $1 AND deleted_at IS NULL`,
     [id]
@@ -240,4 +241,11 @@ export async function isEmailVerified(userId: string): Promise<boolean> {
     userId,
   ]);
   return !!res.rows[0]?.email_verified_at;
+}
+
+export async function updateProfileVisibility(userId: string, isPublic: boolean): Promise<void> {
+  await pool.query(`UPDATE users SET profile_is_public = $1, updated_at = NOW() WHERE id = $2`, [
+    isPublic,
+    userId,
+  ]);
 }
