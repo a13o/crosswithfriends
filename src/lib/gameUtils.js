@@ -53,20 +53,6 @@ export const makeGrid = (textGrid, fillWithSol) => {
   return grid;
 };
 
-export const makeGridFromComposition = (compositionGrid) => {
-  const newGridArray = compositionGrid.map((row) =>
-    row.map(({value, pencil}) => ({
-      black: value === '.',
-      value: value === '.' ? '' : value,
-      pencil,
-      number: null,
-    }))
-  );
-  const grid = new GridWrapper(newGridArray);
-  grid.assignNumbers();
-  return grid;
-};
-
 export const makeClues = (cluesBySquare, grid) => {
   const result = {
     across: [],
@@ -81,36 +67,6 @@ export const makeClues = (cluesBySquare, grid) => {
   const alignedResult = new GridWrapper(grid).alignClues(result);
   return alignedResult;
 };
-
-export const convertCluesForComposition = (clues, gridObject) => {
-  const alignedClues = gridObject.alignClues(clues);
-  const result = [];
-  ['across', 'down'].forEach((dir) => {
-    alignedClues[dir].forEach((value, i) => {
-      if (value) {
-        const cell = gridObject.getCellByNumber(i);
-        if (!cell) {
-          return;
-        }
-        const {r, c} = cell;
-        result.push({
-          dir,
-          r,
-          c,
-          value,
-        });
-      }
-    });
-  });
-  return result;
-};
-
-export const convertGridForComposition = (grid) =>
-  grid.map((row) =>
-    row.map((value) => ({
-      value,
-    }))
-  );
 
 export const makeEmptyClues = (gridArray) => {
   const grid = new GridWrapper(gridArray);

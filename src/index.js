@@ -6,19 +6,7 @@ import React from 'react';
 import useMediaQuery from '@material-ui/core/useMediaQuery';
 import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
 import {isMobile} from './lib/jsUtils';
-import {
-  Account,
-  Battle,
-  Compose,
-  Composition,
-  Game,
-  Play,
-  Replay,
-  Replays,
-  Room,
-  Fencing,
-  WrappedWelcome,
-} from './pages';
+import {Account, Battle, Game, Play, Replay, Replays, Room, Fencing, WrappedWelcome} from './pages';
 import GlobalContext from './lib/GlobalContext';
 
 import './style.css';
@@ -83,8 +71,6 @@ const Root = () => {
             <Route exact path="/beta/battle/:bid" component={Battle} />
             <Route exact path="/beta/play/:pid" component={Play} />
             <Route path="/account" component={Account} />
-            <Route exact path="/compose" component={Compose} />
-            <Route exact path="/composition/:cid" component={Composition} />
             <Route exact path="/fencing/:gid" component={Fencing} />
             <Route exact path="/beta/fencing/:gid" component={Fencing} />
             <Route exact path="/discord" component={DiscordRedirect} />
