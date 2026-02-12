@@ -2,6 +2,7 @@
 import './css/account.css';
 
 import React, {useContext, useState, useEffect} from 'react';
+import {Helmet} from 'react-helmet';
 import {useLocation, useHistory, Link} from 'react-router-dom';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
@@ -512,6 +513,9 @@ export default function Account() {
 
   return (
     <div className="account">
+      <Helmet>
+        <title>Account Settings - Cross with Friends</title>
+      </Helmet>
       <Nav />
       <div className="account--title">Your Account</div>
       <div className="account--main">

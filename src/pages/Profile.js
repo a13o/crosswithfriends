@@ -1,6 +1,7 @@
 import './css/profile.css';
 
 import React, {useContext, useState, useEffect} from 'react';
+import {Helmet} from 'react-helmet';
 import {useParams, useHistory, Link} from 'react-router-dom';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import {MdPeople} from 'react-icons/md';
@@ -236,6 +237,9 @@ export default function Profile() {
 
   return (
     <div className="profile">
+      <Helmet>
+        <title>Profile - Cross with Friends</title>
+      </Helmet>
       <Nav />
       <div className="profile--main">
         {loading && (

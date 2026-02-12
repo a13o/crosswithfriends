@@ -37,6 +37,7 @@ import {
 } from '../model/email_token';
 import {sendVerificationEmail, sendPasswordResetEmail} from '../model/mailer';
 import {pool} from '../model/pool';
+import {backfillSolvesForDfacId} from '../model/puzzle_solve';
 
 const router = express.Router();
 const BCRYPT_ROUNDS = 12;
@@ -646,7 +647,9 @@ router.post('/link-identity', requireAuth, async (req, res) => {
     return;
   }
   await linkDfacId(req.authUser!.userId, dfacId);
-  res.json({ok: true});
+  // Backfill any anonymous puzzle_solves for games this dfac_id participated in
+  const backfilled = await backfillSolvesForDfacId(req.authUser!.userId, dfacId);
+  res.json({ok: true, backfilledSolves: backfilled});
 });
 
 export default router;

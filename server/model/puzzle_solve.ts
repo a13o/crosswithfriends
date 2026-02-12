@@ -173,6 +173,25 @@ export async function getInProgressGames(userId: string): Promise<InProgressGame
   }));
 }
 
+export async function backfillSolvesForDfacId(userId: string, dfacId: string): Promise<number> {
+  const startTime = Date.now();
+  // Find anonymous puzzle_solves for games where this dfac_id participated
+  const result = await pool.query(
+    `INSERT INTO puzzle_solves (pid, gid, solved_time, time_taken_to_solve, user_id, player_count)
+     SELECT ps.pid, ps.gid, ps.solved_time, ps.time_taken_to_solve, $1, ps.player_count
+     FROM puzzle_solves ps
+     JOIN game_events ge ON ge.gid = ps.gid
+     WHERE ps.user_id IS NULL
+       AND (ge.uid = $2 OR ge.event_payload->'params'->>'id' = $2)
+     ON CONFLICT DO NOTHING`,
+    [userId, dfacId]
+  );
+  const count = result.rowCount || 0;
+  const ms = Date.now() - startTime;
+  console.log(`backfillSolvesForDfacId(${userId}, ${dfacId}) backfilled ${count} solves in ${ms}ms`);
+  return count;
+}
+
 export type SolvedPuzzleType = {
   pid: string;
   gid: string;

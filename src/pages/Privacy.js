@@ -1,12 +1,16 @@
 import './css/legal.css';
 
 import React from 'react';
+import {Helmet} from 'react-helmet';
 import Nav from '../components/common/Nav';
 import Footer from '../components/common/Footer';
 
 export default function Privacy() {
   return (
     <div className="legal">
+      <Helmet>
+        <title>Privacy Policy - Cross with Friends</title>
+      </Helmet>
       <Nav />
       <div className="legal--content">
         <h1>Privacy Policy</h1>

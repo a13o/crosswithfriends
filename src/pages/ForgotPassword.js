@@ -1,4 +1,6 @@
+/* eslint-disable react/jsx-no-bind */
 import React, {useState} from 'react';
+import {Helmet} from 'react-helmet';
 import {Link} from 'react-router-dom';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
@@ -28,6 +30,9 @@ export default function ForgotPassword() {
 
   return (
     <div className="account">
+      <Helmet>
+        <title>Forgot Password - Cross with Friends</title>
+      </Helmet>
       <Nav />
       <div className="account--title">Reset Password</div>
       <div className="account--main" style={{paddingTop: 20}}>

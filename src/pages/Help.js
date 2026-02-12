@@ -1,6 +1,7 @@
 import './css/legal.css';
 
 import React from 'react';
+import {Helmet} from 'react-helmet';
 import {Link} from 'react-router-dom';
 import Nav from '../components/common/Nav';
 import Footer from '../components/common/Footer';
@@ -8,6 +9,9 @@ import Footer from '../components/common/Footer';
 export default function Help() {
   return (
     <div className="legal">
+      <Helmet>
+        <title>Help &amp; FAQ - Cross with Friends</title>
+      </Helmet>
       <Nav />
       <div className="legal--content">
         <h1>Help &amp; FAQ</h1>
@@ -29,8 +33,8 @@ export default function Help() {
 
         <h3>Do I need an account to play?</h3>
         <p>
-          You can browse and play puzzles without an account. Creating an account lets you track your solve
-          history, view your profile and stats, and upload puzzles.
+          No. You can browse, play, and upload puzzles without an account. Creating an account lets you track
+          your solve history and view your profile and stats.
         </p>
 
         <h2>Playing Puzzles</h2>
@@ -64,8 +68,16 @@ export default function Help() {
 
         <h3>Can other people see my profile?</h3>
         <p>
-          Yes. Your display name and solve stats are visible when others visit your profile. Your email
-          address is never shown publicly.
+          Profiles are private by default. You can make yours public in <Link to="/account">Settings</Link>{' '}
+          under &quot;Profile Visibility.&quot; When public, your display name and solve stats are visible to
+          others. Your email address is never shown publicly.
+        </p>
+
+        <h3>Does my solve history carry over when I create an account?</h3>
+        <p>
+          Yes. When you create an account or log in, your browser session is automatically linked to your
+          account. Your in-progress games and previously completed puzzles will appear on your profile and in
+          your solve stats.
         </p>
 
         <h2>Account Settings</h2>

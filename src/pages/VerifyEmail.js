@@ -1,4 +1,6 @@
+/* eslint-disable react/jsx-no-bind, consistent-return, no-nested-ternary */
 import React, {useContext, useState, useEffect, useRef} from 'react';
+import {Helmet} from 'react-helmet';
 import {useLocation, useHistory, Link} from 'react-router-dom';
 import Button from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
@@ -63,6 +65,9 @@ export default function VerifyEmail() {
   if (token) {
     return (
       <div className="account">
+        <Helmet>
+          <title>Verify Email - Cross with Friends</title>
+        </Helmet>
         <Nav />
         <div className="account--title">Email Verification</div>
         <div className="account--main" style={{textAlign: 'center', paddingTop: 40}}>
@@ -107,6 +112,9 @@ export default function VerifyEmail() {
   // "Check your inbox" mode (verification gate redirect)
   return (
     <div className="account">
+      <Helmet>
+        <title>Verify Email - Cross with Friends</title>
+      </Helmet>
       <Nav />
       <div className="account--title">Verify Your Email</div>
       <div className="account--main" style={{textAlign: 'center', paddingTop: 20}}>
