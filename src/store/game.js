@@ -3,7 +3,7 @@ import EventEmitter from 'events';
 import _ from 'lodash';
 import * as uuid from 'uuid';
 import * as colors from '../lib/colors';
-import {emitAsync} from '../sockets/emitAsync';
+import {emitAsync, emitAsyncWithTimeout} from '../sockets/emitAsync';
 import {getSocket} from '../sockets/getSocket';
 import {db, SERVER_TIME} from './firebase';
 
@@ -59,7 +59,11 @@ export default class Game extends EventEmitter {
       console.log('reconnecting...');
       await emitAsync(socket, 'join_game', this.gid);
       console.log('reconnected...');
-      this.syncState = null; // allow sync state transitions again after reconnect
+      // Only clear sync state if not 'failed' — failed events exhausted retries
+      // and were never persisted, so reconnecting doesn't fix them
+      if (this.syncState !== 'failed') {
+        this.syncState = null;
+      }
       this.emitReconnect();
     });
   }
@@ -134,7 +138,7 @@ export default class Game extends EventEmitter {
       throw new Error('Not connected to websocket');
     }
 
-    return emitAsync(this.socket, 'game_event', {
+    return emitAsyncWithTimeout(this.socket, 10000, 'game_event', {
       event,
       gid: this.gid,
     });
