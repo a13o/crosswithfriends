@@ -6,6 +6,8 @@
  * outside the React tree still receive dark mode styling.
  */
 
+export {};
+
 describe('dark mode body class syncing', () => {
   beforeEach(() => {
     document.body.classList.remove('dark');
