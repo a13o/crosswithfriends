@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 import EventEmitter from 'events';
 import _ from 'lodash';
 import * as uuid from 'uuid';
@@ -33,6 +34,7 @@ export default class Game extends EventEmitter {
     this.ref = db.ref(path);
     this.eventsRef = this.ref.child('events');
     this.createEvent = null;
+    this.syncState = null; // null | 'retrying' | 'failed'
     this.checkArchive();
   }
 
@@ -57,6 +59,7 @@ export default class Game extends EventEmitter {
       console.log('reconnecting...');
       await emitAsync(socket, 'join_game', this.gid);
       console.log('reconnected...');
+      this.syncState = null; // allow sync state transitions again after reconnect
       this.emitReconnect();
     });
   }
@@ -81,6 +84,13 @@ export default class Game extends EventEmitter {
     this.emit('wsOptimisticEvent', event);
   }
 
+  setSyncState(level, detail) {
+    // Don't downgrade from 'failed' to 'retrying' — only a successful send or reconnect clears it
+    if (this.syncState === 'failed' && level === 'retrying') return;
+    this.syncState = level;
+    this.emit('syncWarning', {level, ...detail});
+  }
+
   emitReconnect() {
     this.emit('reconnect');
   }
@@ -89,12 +99,38 @@ export default class Game extends EventEmitter {
     event.id = uuid.v4();
     this.emitOptimisticEvent(event);
     await this.connectToWebsocket();
-    await this.pushEventToWebsocket(event);
+
+    const MAX_RETRIES = 3;
+    const RETRY_DELAYS = [5000, 10000, 20000];
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await this.pushEventToWebsocket(event);
+        this.setSyncState(null);
+        return;
+      } catch (err) {
+        console.warn(`Event emit failed (attempt ${attempt + 1}/${MAX_RETRIES + 1}):`, err.message);
+        if (attempt < MAX_RETRIES) {
+          this.setSyncState('retrying', {retryIn: RETRY_DELAYS[attempt] / 1000});
+          // Wait for the backoff delay OR socket reconnect, whichever comes first
+          await new Promise((resolve) => {
+            const timeout = setTimeout(resolve, RETRY_DELAYS[attempt]);
+            if (this.socket && !this.socket.connected) {
+              this.socket.once('connect', () => {
+                clearTimeout(timeout);
+                resolve();
+              });
+            }
+          });
+        }
+      }
+    }
+    // all retries exhausted — freeze input, let socket.io keep trying to reconnect
+    console.error('Event delivery failed after all retries');
+    this.setSyncState('failed');
   }
 
   pushEventToWebsocket(event) {
     if (!this.socket || !this.socket.connected) {
-      this.socket && this.socket.close().open(); // HACK try to fix the disconnection bug
       throw new Error('Not connected to websocket');
     }
 
