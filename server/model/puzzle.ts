@@ -299,12 +299,17 @@ export async function recordSolve(
     if (await isGidAlreadySolved(gid)) return;
   }
 
-  // Only increment times_solved on the first solve for this game (any user)
-  const isFirstSolveForGame = !(await isGidAlreadySolved(gid));
-
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Lock the puzzle row to serialize concurrent solves for the same puzzle
+    await client.query(`SELECT 1 FROM puzzles WHERE pid = $1 FOR UPDATE`, [pid]);
+
+    const {
+      rows: [{count}],
+    } = await client.query(`SELECT COUNT(*) FROM puzzle_solves WHERE gid = $1`, [gid]);
+    const isFirstSolveForGame = Number(count) === 0;
+
     await client.query(
       `INSERT INTO puzzle_solves (pid, gid, solved_time, time_taken_to_solve, user_id, player_count)
        VALUES ($1, $2, to_timestamp($3), $4, $5, $6)`,

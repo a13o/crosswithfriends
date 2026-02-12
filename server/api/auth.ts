@@ -49,7 +49,8 @@ const REFRESH_COOKIE_OPTIONS = {
   path: '/api/auth',
 };
 
-const frontendOrigin = () => (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3020');
+const frontendOrigin = () =>
+  process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3020');
 
 const signupSchema = Joi.object({
   email: Joi.string().email().required(),

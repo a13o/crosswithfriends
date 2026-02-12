@@ -1,7 +1,7 @@
 -- psql < create_puzzles.sql
 
 -- extension needed for trigram index support
-CREATE EXTENSION pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE
 IF NOT EXISTS puzzles
