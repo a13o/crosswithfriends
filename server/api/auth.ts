@@ -73,6 +73,10 @@ function buildTokenResponse(user: UserRow, accessToken: string) {
       email: user.email,
       displayName: user.display_name,
       emailVerified: !!user.email_verified_at,
+      authProvider: user.auth_provider,
+      hasPassword: !!user.password_hash,
+      hasGoogle: !!user.oauth_id,
+      profileIsPublic: !!user.profile_is_public,
     },
   };
 }

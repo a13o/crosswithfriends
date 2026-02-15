@@ -38,7 +38,7 @@ export async function createLocalUser(
   const res = await pool.query(
     `INSERT INTO users (email, password_hash, display_name, auth_provider)
      VALUES ($1, $2, $3, 'local')
-     RETURNING id, email, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at`,
+     RETURNING id, email, password_hash, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at, profile_is_public`,
     [email.toLowerCase(), passwordHash, displayName]
   );
   const ms = Date.now() - startTime;
@@ -48,7 +48,7 @@ export async function createLocalUser(
 
 export async function findUserByEmail(email: string): Promise<(UserRow & {password_hash: string}) | null> {
   const res = await pool.query(
-    `SELECT id, email, password_hash, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at
+    `SELECT id, email, password_hash, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at, profile_is_public
      FROM users
      WHERE email = $1 AND deleted_at IS NULL`,
     [email.toLowerCase()]
@@ -66,7 +66,7 @@ export async function findOrCreateGoogleUser(
 
   // Check if a user already has this Google oauth_id linked (any auth_provider)
   const byOauth = await pool.query(
-    `SELECT id, email, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at
+    `SELECT id, email, password_hash, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at, profile_is_public
      FROM users
      WHERE oauth_id = $1 AND deleted_at IS NULL`,
     [googleId]
@@ -97,7 +97,7 @@ export async function findOrCreateGoogleUser(
        VALUES ($1, $2, 'google', $3, NOW())
        ON CONFLICT (auth_provider, oauth_id) WHERE oauth_id IS NOT NULL
        DO UPDATE SET updated_at = NOW()
-       RETURNING id, email, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at`,
+       RETURNING id, email, password_hash, display_name, auth_provider, oauth_id, created_at, updated_at, email_verified_at, profile_is_public`,
       [lowerEmail, displayName, googleId]
     );
     const ms = Date.now() - startTime;

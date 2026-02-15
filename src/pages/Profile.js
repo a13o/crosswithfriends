@@ -97,7 +97,9 @@ function HistoryTable({history}) {
           {history.map((item) => (
             <tr key={`${item.pid}-${item.gid}`}>
               <td>
-                {item.title}
+                <Link to={`/beta/play/${item.pid}`} style={{color: 'inherit'}}>
+                  {item.title}
+                </Link>
                 <CollabTag
                   playerCount={item.playerCount}
                   coSolvers={item.coSolvers}
@@ -108,7 +110,7 @@ function HistoryTable({history}) {
               <td>{formatTime(item.time)}</td>
               <td>{formatDate(item.solvedAt)}</td>
               <td>
-                <Link to={`/replay/${item.gid}`} className="profile--replay-link" title="Watch replay">
+                <Link to={`/beta/replay/${item.gid}`} className="profile--replay-link" title="Watch replay">
                   <FaPlay size={10} />
                 </Link>
               </td>
@@ -138,11 +140,15 @@ function InProgressTable({inProgress}) {
         <tbody>
           {inProgress.map((item) => (
             <tr key={item.gid}>
-              <td>{item.title}</td>
+              <td>
+                <Link to={`/beta/play/${item.pid}`} style={{color: 'inherit'}}>
+                  {item.title}
+                </Link>
+              </td>
               <td>{item.size}</td>
               <td>{formatDate(item.lastActivity)}</td>
               <td>
-                <Link to={`/game/${item.gid}`} className="profile--replay-link" title="Resume game">
+                <Link to={`/beta/game/${item.gid}`} className="profile--replay-link" title="Resume game">
                   <FaPlay size={10} />
                 </Link>
               </td>

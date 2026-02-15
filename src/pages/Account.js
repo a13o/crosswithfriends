@@ -21,6 +21,7 @@ import {
   deleteAccount,
   toggleProfileVisibility,
 } from '../api/auth';
+import {getUserStats} from '../api/user_stats';
 
 function AccountSection({title, children}) {
   return (
@@ -421,6 +422,19 @@ function DeleteAccountSection({user, accessToken, onDeleted}) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [solveCount, setSolveCount] = useState(null);
+
+  const handleConfirm = async () => {
+    setConfirming(true);
+    try {
+      const stats = await getUserStats(user.id, accessToken);
+      if (stats?.stats?.totalSolved != null) {
+        setSolveCount(stats.stats.totalSolved);
+      }
+    } catch (e) {
+      // Non-critical — just won't show count
+    }
+  };
 
   const handleDelete = async () => {
     setError('');
@@ -438,7 +452,7 @@ function DeleteAccountSection({user, accessToken, onDeleted}) {
   if (!confirming) {
     return (
       <AccountSection title="Delete Account">
-        <Button size="small" style={{color: '#d32f2f'}} onClick={() => setConfirming(true)}>
+        <Button size="small" style={{color: '#d32f2f'}} onClick={handleConfirm}>
           Delete Account
         </Button>
       </AccountSection>
@@ -448,7 +462,11 @@ function DeleteAccountSection({user, accessToken, onDeleted}) {
   return (
     <AccountSection title="Delete Account">
       <Typography variant="body2" style={{color: '#d32f2f', width: '100%'}}>
-        This action is permanent. Your account data will be deleted.
+        This action is permanent. Your account data
+        {solveCount != null && solveCount > 0
+          ? `, including ${solveCount} solved puzzle${solveCount === 1 ? '' : 's'},`
+          : ''}{' '}
+        will be deleted.
       </Typography>
       {user.hasPassword && (
         <TextField
