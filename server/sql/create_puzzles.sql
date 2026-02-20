@@ -1,7 +1,7 @@
 -- psql < create_puzzles.sql
 
 -- extension needed for trigram index support
-CREATE EXTENSION pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE
 IF NOT EXISTS puzzles
@@ -16,7 +16,13 @@ IF NOT EXISTS puzzles
   times_solved numeric DEFAULT 0 CHECK (times_solved >= 0),
 
   -- static properties of the puzzle
-  content jsonb
+  content jsonb,
+
+  -- who uploaded this puzzle (NULL for puzzles uploaded before auth)
+  uploaded_by UUID REFERENCES users(id),
+
+  -- SHA-256 hash for duplicate detection
+  content_hash text
 );
 
 ALTER TABLE public.puzzles
@@ -33,3 +39,6 @@ CREATE INDEX puzzle_pid_numeric_desc
     ON public.puzzles USING btree
     (pid_numeric DESC NULLS LAST)
     TABLESPACE pg_default;
+
+CREATE UNIQUE INDEX IF NOT EXISTS puzzles_content_hash_public
+    ON puzzles (content_hash) WHERE is_public = true AND content_hash IS NOT NULL;
