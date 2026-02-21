@@ -40,8 +40,13 @@ export default function iPUZtoJSON(readerResult) {
 
   jsonFromReader.puzzle.forEach((row, rowIndex) => {
     row.forEach((cell, cellIndex) => {
-      if (typeof cell === 'object' && cell?.style?.shapebg && cell.style.shapebg === 'circle') {
-        circles.push(rowIndex * row.length + cellIndex);
+      if (typeof cell === 'object' && cell?.style) {
+        if (cell.style.shapebg === 'circle') {
+          circles.push(rowIndex * row.length + cellIndex);
+        }
+        if (cell.style.color || cell.style.highlight) {
+          shades.push(rowIndex * row.length + cellIndex);
+        }
       }
     });
   });

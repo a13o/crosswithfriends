@@ -137,6 +137,45 @@ describe('iPUZtoJSON', () => {
     expect(result.circles).toHaveLength(1);
   });
 
+  it('detects shades from style.color', () => {
+    const ipuz = makeMinimalIPUZ({
+      puzzle: [
+        [{cell: 1, style: {color: 'dcdcdc'}}, {cell: 2}],
+        [{cell: 3}, '#'],
+      ],
+    });
+    const result = iPUZtoJSON(makeBuffer(ipuz));
+    expect(result.shades).toContain(0);
+    expect(result.shades).toHaveLength(1);
+  });
+
+  it('detects shades from style.highlight', () => {
+    const ipuz = makeMinimalIPUZ({
+      puzzle: [
+        [{cell: 1, style: {highlight: true}}, {cell: 2}],
+        [{cell: 3}, '#'],
+      ],
+    });
+    const result = iPUZtoJSON(makeBuffer(ipuz));
+    expect(result.shades).toContain(0);
+    expect(result.shades).toHaveLength(1);
+  });
+
+  it('detects both circles and shades on different cells', () => {
+    const ipuz = makeMinimalIPUZ({
+      puzzle: [
+        [
+          {cell: 1, style: {shapebg: 'circle'}},
+          {cell: 2, style: {highlight: true}},
+        ],
+        [{cell: 3}, '#'],
+      ],
+    });
+    const result = iPUZtoJSON(makeBuffer(ipuz));
+    expect(result.circles).toEqual([0]);
+    expect(result.shades).toEqual([1]);
+  });
+
   it('returns empty circles and shades by default', () => {
     const result = iPUZtoJSON(makeBuffer(makeMinimalIPUZ()));
     expect(result.circles).toEqual([]);
