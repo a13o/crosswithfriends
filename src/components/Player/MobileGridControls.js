@@ -5,7 +5,7 @@ import Flex from 'react-flexview';
 import {MdKeyboardArrowLeft, MdKeyboardArrowRight} from 'react-icons/md';
 import _ from 'lodash';
 import Clue from './ClueText';
-import GridControls from './GridControls';
+import GridControls, {validLetter} from './GridControls';
 import GridObject from '../../lib/wrappers/GridWrapper';
 
 const RunOnce = ({effect}) => {
@@ -430,7 +430,7 @@ export default class MobileGridControls extends GridControls {
       // support gesture-based keyboards that allow inputting words at a time
       let delay = 0;
       for (const char of input) {
-        if (this.validLetter(char.toUpperCase())) {
+        if (validLetter(char.toUpperCase())) {
           this.setState({dbgstr: `TYPE letter ${char.toUpperCase()}`});
           if (delay) {
             setTimeout(() => {

@@ -13,7 +13,7 @@ function safe_while(condition, step, capLimit = 500) {
   }
 }
 
-function validLetter(letter) {
+export function validLetter(letter) {
   const VALID_SYMBOLS = '!@#$%^&*()-+=`~/?\\'; // special theme puzzles have these sometimes;
   if (VALID_SYMBOLS.indexOf(letter) !== -1) return true;
   return letter.match(/^[A-Z0-9]$/);
