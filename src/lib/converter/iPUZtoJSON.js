@@ -23,7 +23,9 @@ export default function iPUZtoJSON(readerResult) {
   const hasSolution = !!jsonFromReader.solution;
   const gridSource = jsonFromReader.solution || jsonFromReader.puzzle;
   const grid = gridSource.map((row) =>
-    row.map((cell) => {
+    row.map((rawCell) => {
+      // Unwrap object-wrapped cells (e.g. {cell: '#'}, {cell: 1, style: ...})
+      const cell = typeof rawCell === 'object' && rawCell !== null ? rawCell.cell : rawCell;
       if (cell === null || cell === '#') return '.';
       if (!hasSolution) return ''; // no solution — white cells are empty
       return cell;

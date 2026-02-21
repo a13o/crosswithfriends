@@ -201,6 +201,21 @@ describe('iPUZtoJSON', () => {
       expect(result.grid[1][1]).toBe('.');
     });
 
+    it('handles object-wrapped black squares in puzzle field', () => {
+      const ipuz = makeMinimalIPUZ({
+        puzzle: [
+          [{cell: 1}, {cell: '#'}],
+          [{cell: null}, {cell: 3}],
+        ],
+      });
+      delete ipuz.solution;
+      const result = iPUZtoJSON(makeBuffer(ipuz));
+      expect(result.grid[0][0]).toBe(''); // white cell
+      expect(result.grid[0][1]).toBe('.'); // {cell: '#'} = black
+      expect(result.grid[1][0]).toBe('.'); // {cell: null} = black
+      expect(result.grid[1][1]).toBe(''); // white cell
+    });
+
     it('still extracts info, clues, and circles', () => {
       const ipuz = makeMinimalIPUZ();
       delete ipuz.solution;
