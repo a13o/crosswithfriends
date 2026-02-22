@@ -125,10 +125,14 @@ export default class Game extends Component {
     });
     this.gameModel.on('wsCreateEvent', (event) => {
       this.historyWrapper.setCreateEvent(event);
+      if (this._connectionTimer) clearTimeout(this._connectionTimer);
+      this.setState({connectionFailed: false});
       this.handleUpdate();
     });
     this.gameModel.on('wsEvent', (event) => {
       this.historyWrapper.addEvent(event);
+      if (this._connectionTimer) clearTimeout(this._connectionTimer);
+      this.setState({connectionFailed: false});
       this.handleChange();
       this.handleUpdate();
     });
