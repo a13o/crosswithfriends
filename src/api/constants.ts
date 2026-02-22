@@ -8,12 +8,11 @@ if (window.location.protocol === 'https' && process.env.NODE_ENV === 'developmen
 }
 
 // Local dev with local server: direct to localhost
-// Local dev without local server: direct to staging/prod backend
+// Local dev without local server: '' → CRA proxy forwards /api/* to remote backend
 // Production build: '' → same-origin through Render rewrite proxy
 function getServerUrl() {
   if (process.env.REACT_APP_USE_LOCAL_SERVER) return 'http://localhost:3021';
-  if (process.env.NODE_ENV === 'production') return '';
-  return REMOTE_SERVER_URL;
+  return '';
 }
 export const SERVER_URL = getServerUrl();
 
