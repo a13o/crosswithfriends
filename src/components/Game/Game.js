@@ -15,6 +15,7 @@ import {toArr} from '../../lib/jsUtils';
 import {toHex, darken, GREENISH} from '../../lib/colors';
 
 const skipFilledSquaresKey = 'skip-filled-squares';
+const autoAdvanceCursorKey = 'auto-advance-cursor';
 const vimModeKey = 'vim-mode';
 const vimModeRegex = /^\d+(a|d)*$/;
 
@@ -30,6 +31,7 @@ export default class Game extends Component {
       vimInsert: false,
       vimCommand: false,
       skipFilledSquares: true,
+      autoAdvanceCursor: true,
       colorAttributionMode: false,
       expandMenu: false,
     };
@@ -57,6 +59,17 @@ export default class Game extends Component {
       console.error('Failed to parse local storage: skipFilledSquares');
     }
     this.setState({skipFilledSquares});
+
+    let autoAdvanceCursor = this.state.autoAdvanceCursor;
+    try {
+      const storedValue = localStorage.getItem(autoAdvanceCursorKey);
+      if (storedValue != null) {
+        autoAdvanceCursor = JSON.parse(storedValue);
+      }
+    } catch (e) {
+      console.error('Failed to parse local storage: autoAdvanceCursor');
+    }
+    this.setState({autoAdvanceCursor});
 
     this.componentDidUpdate({});
   }
@@ -215,6 +228,14 @@ export default class Game extends Component {
     });
   };
 
+  handleToggleAutoAdvanceCursor = () => {
+    this.setState((prevState) => {
+      const autoAdvanceCursor = !prevState.autoAdvanceCursor;
+      localStorage.setItem(autoAdvanceCursorKey, JSON.stringify(autoAdvanceCursor));
+      return {autoAdvanceCursor};
+    });
+  };
+
   handleTogglePencil = () => {
     this.setState((prevState) => ({
       pencilMode: !prevState.pencilMode,
@@ -361,6 +382,7 @@ export default class Game extends Component {
         onVimCommandPressEscape={this.handleRefocus}
         skipFilledSquares={this.state.skipFilledSquares}
         onToggleSkipFilledSquares={this.handleToggleSkipFilledSquares}
+        autoAdvanceCursor={this.state.autoAdvanceCursor}
         colorAttributionMode={this.state.colorAttributionMode}
         mobile={mobile}
         pickups={this.props.pickups}
@@ -403,6 +425,7 @@ export default class Game extends Component {
         autocheckMode={autocheckMode}
         vimMode={vimMode}
         skipFilledSquares={skipFilledSquares}
+        autoAdvanceCursor={this.state.autoAdvanceCursor}
         solved={solved}
         contest={!!this.game.contest}
         vimInsert={vimInsert}
@@ -419,6 +442,7 @@ export default class Game extends Component {
         onTogglePencil={this.handleTogglePencil}
         onToggleVimMode={this.handleToggleVimMode}
         onToggleSkipFilledSquares={this.handleToggleSkipFilledSquares}
+        onToggleAutoAdvanceCursor={this.handleToggleAutoAdvanceCursor}
         onToggleAutocheck={this.handleToggleAutocheck}
         onToggleListView={this.handleToggleListView}
         onToggleChat={this.handleToggleChat}
