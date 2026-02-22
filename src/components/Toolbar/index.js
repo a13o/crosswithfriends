@@ -186,9 +186,10 @@ export default class Toolbar extends Component {
   };
 
   renderExtrasMenu() {
-    const {vimMode, onToggleColorAttributionMode, skipFilledSquares} = this.props;
-    const vimModeLabel = vimMode ? 'Disable Vim Mode' : 'Enable Vim Mode';
-    const skipFilledSquaresLabel = skipFilledSquares ? "Don't skip filled squares" : 'Skip filled squares';
+    const {vimMode, onToggleColorAttributionMode, skipFilledSquares, autoAdvanceCursor} = this.props;
+    const vimModeLabel = vimMode ? 'Vim mode off' : 'Vim mode';
+    const skipFilledSquaresLabel = skipFilledSquares ? "Don't skip filled" : 'Skip filled';
+    const autoAdvanceLabel = autoAdvanceCursor ? 'No auto-advance' : 'Auto-advance';
     return (
       <ActionMenu
         label="Extras"
@@ -196,11 +197,12 @@ export default class Toolbar extends Component {
         actions={{
           [vimModeLabel]: this.handleVimModeClick,
           [skipFilledSquaresLabel]: this.handleSkipFilledSquaresClick,
+          [autoAdvanceLabel]: this.props.onToggleAutoAdvanceCursor,
           'Color Attribution': onToggleColorAttributionMode,
           'List View': this.props.onToggleListView,
           Pencil: this.props.onTogglePencil,
           Autocheck: this.props.onToggleAutocheck,
-          'Create new game link': () => window.open(`/beta/play/${this.props.pid}?new=1`, '_blank'),
+          'New game link': () => window.open(`/beta/play/${this.props.pid}?new=1`, '_blank'),
         }}
       />
     );
@@ -576,6 +578,7 @@ export default class Toolbar extends Component {
                 {this.renderColorAttributionToggle()}
                 {this.renderListViewButton()}
                 {!contest && this.renderAutocheck()}
+                {!replayMode && this.renderExtrasMenu()}
                 {this.renderChatButton()}
               </>
             )}

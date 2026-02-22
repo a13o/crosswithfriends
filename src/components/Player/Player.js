@@ -366,6 +366,7 @@ export default class Player extends Component {
       onVimCommand,
       skipFilledSquares,
       onToggleSkipFilledSquares,
+      autoAdvanceCursor,
       grid,
       clues,
       circles,
@@ -459,6 +460,7 @@ export default class Player extends Component {
               onPressPeriod={onPressPeriod}
               skipFilledSquares={skipFilledSquares}
               onToggleSkipFilledSquares={onToggleSkipFilledSquares}
+              autoAdvanceCursor={autoAdvanceCursor}
               selected={selected}
               direction={direction}
               onSetDirection={this._setDirection}
@@ -491,6 +493,7 @@ export default class Player extends Component {
             onPressPeriod={onPressPeriod}
             skipFilledSquares={skipFilledSquares}
             onToggleSkipFilledSquares={onToggleSkipFilledSquares}
+            autoAdvanceCursor={autoAdvanceCursor}
             selected={selected}
             direction={direction}
             onSetDirection={this._setDirection}
@@ -535,6 +538,7 @@ export default class Player extends Component {
             onVimCommand={onVimCommand}
             skipFilledSquares={skipFilledSquares}
             onToggleSkipFilledSquares={onToggleSkipFilledSquares}
+            autoAdvanceCursor={autoAdvanceCursor}
             selected={selected}
             direction={direction}
             onSetDirection={this._setDirection}
@@ -572,6 +576,7 @@ export default class Player extends Component {
           onVimCommand={onVimCommand}
           skipFilledSquares={skipFilledSquares}
           onToggleSkipFilledSquares={onToggleSkipFilledSquares}
+          autoAdvanceCursor={autoAdvanceCursor}
           selected={selected}
           direction={direction}
           onSetDirection={this._setDirection}
