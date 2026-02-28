@@ -105,11 +105,19 @@ export default function LoginModal({open, onClose}) {
     [handleForgotPassword]
   );
 
+  const handleInteractOutside = useCallback((e) => {
+    const target = e.detail?.originalEvent?.target;
+    // Allow overlay clicks to close the dialog; block everything else
+    // (e.g. password-manager extension popups) from dismissing it.
+    if (target?.classList?.contains('login-modal--overlay')) return;
+    e.preventDefault();
+  }, []);
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="login-modal--overlay" />
-        <DialogPrimitive.Content className="login-modal--panel">
+        <DialogPrimitive.Content className="login-modal--panel" onInteractOutside={handleInteractOutside}>
           <TabsPrimitive.Root value={tab} onValueChange={handleTabChange}>
             <TabsPrimitive.List className="login-modal--tabs">
               <TabsPrimitive.Trigger value="login" className="login-modal--tab">
