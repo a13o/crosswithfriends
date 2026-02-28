@@ -79,7 +79,7 @@
 }
 
 .dark .cell.pencil .cell--value {
-  color: rgba(255, 255, 255, 0.47);
+  color: var(--pencil-color);
 }
 
 .dark .clues--list--scroll {
