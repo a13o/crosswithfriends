@@ -14,3 +14,11 @@ export async function createGame(data: CreateGameRequest): Promise<CreateGameRes
   });
   return resp.json();
 }
+
+export async function dismissGame(gid: string, accessToken: string): Promise<boolean> {
+  const resp = await fetch(`${SERVER_URL}/api/game/${gid}/dismiss`, {
+    method: 'POST',
+    headers: {Authorization: `Bearer ${accessToken}`},
+  });
+  return resp.ok;
+}

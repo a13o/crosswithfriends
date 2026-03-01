@@ -1,3 +1,5 @@
+import './css/play.css';
+
 import {Component} from 'react';
 import {Helmet} from 'react-helmet-async';
 import _ from 'lodash';
@@ -6,10 +8,12 @@ import {formatTimestamp} from '../lib/formatTimestamp';
 import {Link} from 'react-router-dom';
 
 import Nav from '../components/common/Nav';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import actions from '../actions';
 import {getUser, BattleModel} from '../store';
 import redirect from '../lib/redirect';
 import {createGame} from '../api/create_game';
+import {fetchPuzzleInfo} from '../api/puzzle';
 
 import withRouter from '../lib/withRouter';
 
@@ -19,7 +23,13 @@ class Play extends Component {
     this.state = {
       userHistory: null,
       creating: false,
+      puzzleInfo: null,
+      abandonGid: null,
     };
+    this._handleNewGame = this.create.bind(this);
+    this._handleAbandonClick = this.handleAbandonClick.bind(this);
+    this._handleAbandonConfirm = this.confirmAbandon.bind(this);
+    this._handleAbandonClose = this.closeAbandon.bind(this);
   }
 
   componentDidMount() {
@@ -28,6 +38,10 @@ class Play extends Component {
       this.user.listUserHistory().then((userHistory) => {
         this.setState({userHistory});
       });
+    });
+
+    fetchPuzzleInfo(this.pid).then((info) => {
+      this.setState({puzzleInfo: info});
     });
 
     if (this.query.mode === 'battle') {
@@ -57,7 +71,8 @@ class Play extends Component {
     }
 
     const {games} = this;
-    const shouldAutocreate = !this.state.creating && (!games || (games && games.length === 0) || this.is_new);
+    if (!games) return; // history not loaded yet
+    const shouldAutocreate = !this.state.creating && (games.length === 0 || this.is_new);
     if (shouldAutocreate) {
       this.create();
       return;
@@ -108,6 +123,22 @@ class Play extends Component {
     });
   }
 
+  handleAbandonClick(e) {
+    this.setState({abandonGid: e.currentTarget.dataset.gid});
+  }
+
+  closeAbandon() {
+    this.setState({abandonGid: null});
+  }
+
+  async confirmAbandon() {
+    const {abandonGid} = this.state;
+    if (!abandonGid) return;
+    await this.user.removeGame(abandonGid);
+    const userHistory = await this.user.listUserHistory();
+    this.setState({userHistory, abandonGid: null});
+  }
+
   createAndJoinBattle() {
     actions.getNextBid((bid) => {
       const battle = new BattleModel(`/battle/${bid}`);
@@ -120,19 +151,31 @@ class Play extends Component {
 
   renderMain() {
     if (this.state.creating) {
-      return <div style={{padding: 20}}>Creating game...</div>;
+      return <div className="play">Creating game...</div>;
     }
 
     if (!this.games) {
-      return <div style={{padding: 20}}>Loading...</div>;
+      return <div className="play">Loading...</div>;
     }
 
+    const sortedGames = _.sortBy(this.games, (g) => -(g.time || 0));
+
     return (
-      <div style={{padding: 20}}>
-        Your Games
-        <table>
+      <div className="play">
+        <div className="play--title">Your Games</div>
+        {this.state.puzzleInfo && (
+          <div className="play--puzzle-info">
+            {this.state.puzzleInfo.title && (
+              <div className="play--puzzle-title">{this.state.puzzleInfo.title}</div>
+            )}
+            {this.state.puzzleInfo.author && (
+              <div className="play--puzzle-author">{this.state.puzzleInfo.author}</div>
+            )}
+          </div>
+        )}
+        <table className="play--table">
           <tbody>
-            {_.map(this.games, ({gid, time, v2}) => {
+            {sortedGames.map(({gid, time, v2, solved}) => {
               let href;
               if (!v2) {
                 href = `/game/${gid}`;
@@ -143,15 +186,35 @@ class Play extends Component {
               }
               return (
                 <tr key={gid}>
-                  <td>{formatTimestamp(time)}</td>
+                  <td className="play--date">{formatTimestamp(time)}</td>
                   <td>
                     <Link to={href}>Game {gid}</Link>
+                  </td>
+                  <td>
+                    <span className={`play--status${solved ? '' : ' play--status-inprogress'}`}>
+                      {solved ? 'Solved' : 'In progress'}
+                    </span>
+                  </td>
+                  <td>
+                    {!solved && (
+                      <button
+                        className="play--abandon"
+                        title="Remove this game"
+                        data-gid={gid}
+                        onClick={this._handleAbandonClick}
+                      >
+                        &times;
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        <button className="btn btn--contained btn--primary" onClick={this._handleNewGame}>
+          Start a new game
+        </button>
       </div>
     );
   }
@@ -160,10 +223,24 @@ class Play extends Component {
     return (
       <div>
         <Helmet>
-          <title>Play - Cross with Friends</title>
+          <title>
+            {this.state.puzzleInfo?.title
+              ? `${this.state.puzzleInfo.title} - Cross with Friends`
+              : 'Play - Cross with Friends'}
+          </title>
         </Helmet>
         <Nav />
         {this.renderMain()}
+        <ConfirmDialog
+          open={!!this.state.abandonGid}
+          onOpenChange={this._handleAbandonClose}
+          title="Remove game?"
+          confirmLabel="Remove"
+          danger
+          onConfirm={this._handleAbandonConfirm}
+        >
+          This will remove the game from your list. You can rejoin later if you have the link.
+        </ConfirmDialog>
       </div>
     );
   }
