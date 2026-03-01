@@ -204,7 +204,7 @@ export default class Cell extends React.Component<Props> {
     if (image) {
       style = {
         ...style,
-        backgroundImage: `url(${image})`,
+        backgroundImage: `url("${image}")`,
         backgroundSize: 'contain',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
