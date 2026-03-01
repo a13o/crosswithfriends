@@ -157,6 +157,10 @@ export default class Cell extends React.Component<Props> {
   }
 
   renderImage() {
+    // Black cells still use a child element for images since they
+    // don't go through getStyle(). Non-black cell images are rendered
+    // as CSS background-image in getStyle() to avoid bleed from
+    // border-collapse on the parent table.
     const {image} = this.props;
     if (image) {
       return <img src={image} alt="" className="cell--image--bg" draggable={false} />;
@@ -187,18 +191,26 @@ export default class Cell extends React.Component<Props> {
     return <div style={divStyle} />;
   }
 
-  getStyle() {
-    const {attributionColor, cellStyle, selected, highlighted, frozen} = this.props;
+  getStyle(): React.CSSProperties {
+    const {attributionColor, cellStyle, selected, highlighted, frozen, image} = this.props;
+    let style: React.CSSProperties;
     if (selected) {
-      return cellStyle.selected;
+      style = cellStyle.selected;
+    } else if (highlighted) {
+      style = frozen ? cellStyle.frozen : cellStyle.highlighted;
+    } else {
+      style = {backgroundColor: attributionColor};
     }
-    if (highlighted) {
-      if (frozen) {
-        return cellStyle.frozen;
-      }
-      return cellStyle.highlighted;
+    if (image) {
+      style = {
+        ...style,
+        backgroundImage: `url("${image}")`,
+        backgroundSize: 'contain',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+      };
     }
-    return {backgroundColor: attributionColor};
+    return style;
   }
 
   handleClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
@@ -300,7 +312,6 @@ export default class Cell extends React.Component<Props> {
           {this.renderFlipButton()}
           {this.renderCircle()}
           {this.renderShade()}
-          {this.renderImage()}
           {this.renderPickup()}
           {this.renderSolvedBy()}
           {!this.props.isImage && (
