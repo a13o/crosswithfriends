@@ -123,11 +123,11 @@
     "vitest": "^2"
   },
   "scripts": {
-    "start": "vite --port 3020",
-    "devfrontend": "cross-env VITE_USE_LOCAL_SERVER=1 vite --port 3020",
-    "devfrontendprod": "cross-env VITE_ENV=production VITE_USE_LOCAL_SERVER=1 vite --port 3020",
-    "devbackend": "dotenv -e server/.env.local -- cross-env PORT=3021 nodemon --watch server -e \"ts\" --exec \"npx ts-node -P server/tsconfig.json server/server.ts\"",
-    "devbackendprod": "source .env.prod; PORT=3021 nodemon --watch server -e \"ts\" --exec \"npx ts-node -P server/tsconfig.json server/server.ts\"",
+    "start": "vite --port 3020 --strictPort",
+    "devfrontend": "lsof -ti :3020 | xargs kill -9 2>/dev/null; cross-env VITE_USE_LOCAL_SERVER=1 vite --port 3020 --strictPort",
+    "devfrontendprod": "lsof -ti :3020 | xargs kill -9 2>/dev/null; cross-env VITE_ENV=production VITE_USE_LOCAL_SERVER=1 vite --port 3020 --strictPort",
+    "devbackend": "lsof -ti :3021 | xargs kill -9 2>/dev/null; dotenv -e server/.env.local -- cross-env PORT=3021 nodemon --watch server -e \"ts\" --exec \"npx ts-node -P server/tsconfig.json server/server.ts\"",
+    "devbackendprod": "lsof -ti :3021 | xargs kill -9 2>/dev/null; source .env.prod; PORT=3021 nodemon --watch server -e \"ts\" --exec \"npx ts-node -P server/tsconfig.json server/server.ts\"",
     "servebackendprod": "while true; do env $(cat .env.prod | xargs)  NODE_ENV=production PORT=3021 ts-node -P server/tsconfig.json server/server.ts || true; done",
     "servebackendstaging": "while true; do env $(cat .env.staging | xargs)  NODE_ENV=production PORT=4021 ts-node -P server/tsconfig.json server/server.ts || true; done",
     "build": "vite build",
