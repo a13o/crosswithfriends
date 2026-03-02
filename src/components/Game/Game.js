@@ -35,6 +35,7 @@ export default class Game extends Component {
       colorAttributionMode: false,
       expandMenu: false,
       lastMilestone: 0,
+      milestoneInitialized: false,
       milestoneMessage: null,
       showProgress: true,
     };
@@ -91,6 +92,21 @@ export default class Game extends Component {
   componentDidUpdate(prevProps) {
     if (prevProps.myColor !== this.props.myColor) {
       this.handleUpdateColor(this.props.id, this.props.myColor);
+    }
+
+    // Initialize lastMilestone from current grid so resuming a puzzle
+    // doesn't fire stale milestone toasts on the first edit.
+    if (!this.state.milestoneInitialized && this.game && this.game.grid) {
+      const initPercent = this.getPercentComplete();
+      const milestones = [75, 50, 25];
+      let initialMilestone = 0;
+      for (const m of milestones) {
+        if (initPercent >= m) {
+          initialMilestone = m;
+          break;
+        }
+      }
+      this.setState({lastMilestone: initialMilestone, milestoneInitialized: true});
     }
   }
 
