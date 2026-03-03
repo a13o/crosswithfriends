@@ -40,7 +40,7 @@ Hosted at [crosswithfriends.com](https://www.crosswithfriends.com).
 
 - Helmet middleware for security response headers
 - Content hash deduplication to prevent duplicate public puzzle uploads
-- Express 4.21, body-parser 1.20, moment 2.30 upgrades for known CVE fixes
+- Dependency upgrades for known CVE fixes
 
 ### Testing & CI
 
