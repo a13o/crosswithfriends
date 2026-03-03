@@ -3,7 +3,7 @@ import './css/nav.css';
 import {Link} from 'react-router';
 import {useCallback, useContext, useEffect, useRef, useState} from 'react';
 
-import {clsx} from 'clsx';
+import clsx from 'clsx';
 import {FaSun, FaMoon, FaDesktop, FaUserCircle} from 'react-icons/fa';
 import {MdInfoOutline} from 'react-icons/md';
 import GlobalContext from '../../lib/GlobalContext';

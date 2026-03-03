@@ -17,7 +17,7 @@ if (sentryDsn) {
   });
 }
 
-import {clsx} from 'clsx';
+import clsx from 'clsx';
 import {createRoot} from 'react-dom/client';
 import React from 'react';
 import {HelmetProvider} from 'react-helmet-async';

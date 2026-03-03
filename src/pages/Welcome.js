@@ -13,7 +13,7 @@ import {
 } from 'react-icons/md';
 import _ from 'lodash';
 
-import {clsx} from 'clsx';
+import clsx from 'clsx';
 import Nav from '../components/common/Nav';
 import Upload from '../components/Upload';
 import {getUser} from '../store';

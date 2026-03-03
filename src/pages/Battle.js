@@ -4,7 +4,7 @@ import {Component} from 'react';
 import _ from 'lodash';
 import {Helmet} from 'react-helmet-async';
 
-import {clsx} from 'clsx';
+import clsx from 'clsx';
 import {BattleModel} from '../store';
 import redirect from '../lib/redirect';
 import {isMobile} from '../lib/jsUtils';
