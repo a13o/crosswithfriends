@@ -18,6 +18,7 @@ import {cleanupExpiredTokens} from './model/refresh_token';
 import {cleanupExpiredEmailTokens, cleanupExpiredResetTokens} from './model/email_token';
 
 const app = express();
+app.set('query parser', 'extended');
 const server = new http.Server(app);
 app.use(
   helmet({
