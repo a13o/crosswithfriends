@@ -107,6 +107,7 @@ export default class Clock extends Component {
         role="button"
         tabIndex={0}
         title={titleStr}
+        aria-pressed={isPaused}
       >
         <StatusIcon className="clock__icon" aria-hidden="true" />
         <span className="clock__value">{clock}</span>
