@@ -21,14 +21,15 @@ export interface RoomEvent<T extends RoomEventType = RoomEventType> {
   uid: string;
 }
 
-export const UserPingRoomEvent = (): RoomEvent<RoomEventType.USER_PING> => ({
-  timestamp: Date.now(),
-  type: RoomEventType.USER_PING,
-  uid: getLocalId(),
-  params: {
-    uid: getLocalId(),
-  },
-});
+export const UserPingRoomEvent = (): RoomEvent<RoomEventType.USER_PING> => {
+  const uid = getLocalId();
+  return {
+    timestamp: Date.now(),
+    type: RoomEventType.USER_PING,
+    uid,
+    params: {uid},
+  };
+};
 
 export const isUserPingRoomEvent = (event: RoomEvent): event is RoomEvent<RoomEventType.USER_PING> =>
   event.type === RoomEventType.USER_PING;
