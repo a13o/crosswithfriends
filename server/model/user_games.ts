@@ -13,9 +13,9 @@ export async function getGuestPuzzleStatuses(dfacId: string): Promise<PuzzleStat
   // then join create events and snapshots only on the distinct game IDs.
   const result = await pool.query(
     `WITH user_gids AS (
-       SELECT DISTINCT gid FROM game_events WHERE uid = $1
+       SELECT gid FROM game_events WHERE uid = $1
        UNION
-       SELECT DISTINCT gid FROM game_events WHERE (event_payload->'params'->>'id') = $1
+       SELECT gid FROM game_events WHERE (event_payload->'params'->>'id') = $1
      )
      SELECT
        ce.event_payload->'params'->>'pid' AS pid,
