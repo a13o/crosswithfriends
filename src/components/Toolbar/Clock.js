@@ -1,6 +1,6 @@
 import './css/clock.css';
 import {Component} from 'react';
-import {FaPause, FaStopwatch} from 'react-icons/fa6';
+import {FaFlagCheckered, FaPause, FaStopwatch} from 'react-icons/fa6';
 import {MAX_CLOCK_INCREMENT} from '../../lib/timing';
 
 export const formatMilliseconds = (ms) => {
@@ -104,7 +104,8 @@ export default class Clock extends Component {
     const {clock} = this.state;
     const solved = this.isSolved;
     const isPaused = this.isPaused;
-    const StatusIcon = isPaused ? FaPause : FaStopwatch;
+    // eslint-disable-next-line no-nested-ternary
+    const StatusIcon = solved ? FaFlagCheckered : isPaused ? FaPause : FaStopwatch;
     // eslint-disable-next-line no-nested-ternary
     const titleStr = solved ? 'Solve time' : isPaused ? 'Click to unpause' : 'Click to pause';
     return (
