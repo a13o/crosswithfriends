@@ -79,13 +79,19 @@ export default class Clock extends Component {
     return now > start + MAX_CLOCK_INCREMENT;
   }
 
+  get isSolved() {
+    return !!this.props.solved;
+  }
+
   get isPaused() {
     if (this.props.replayMode) return false;
+    if (this.isSolved) return false;
     // to this component, there's no difference between capped & paused
     return this.props.isPaused || this.isCapped;
   }
 
   togglePause() {
+    if (this.isSolved) return;
     const {onPause, onStart} = this.props;
     if (this.isPaused) {
       onStart();
@@ -96,12 +102,15 @@ export default class Clock extends Component {
 
   render() {
     const {clock} = this.state;
+    const solved = this.isSolved;
     const isPaused = this.isPaused;
     const StatusIcon = isPaused ? FaPause : FaStopwatch;
-    const titleStr = isPaused ? 'Click to unpause' : 'Click to pause';
+    let titleStr = 'Click to pause';
+    if (solved) titleStr = 'Solve time';
+    else if (isPaused) titleStr = 'Click to unpause';
     return (
       <div
-        className={`clock${isPaused ? ' clock--paused' : ''}`}
+        className={`clock${isPaused ? ' clock--paused' : ''}${solved ? ' clock--solved' : ''}`}
         onClick={this._togglePause}
         onKeyDown={this._handleKeyDown}
         role="button"
