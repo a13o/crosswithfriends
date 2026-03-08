@@ -110,12 +110,12 @@ export default class Clock extends Component {
     return (
       <div
         className={`clock${isPaused ? ' clock--paused' : ''}${solved ? ' clock--solved' : ''}`}
-        onClick={this._togglePause}
-        onKeyDown={this._handleKeyDown}
-        role="button"
-        tabIndex={0}
+        onClick={solved ? undefined : this._togglePause}
+        onKeyDown={solved ? undefined : this._handleKeyDown}
+        role={solved ? undefined : 'button'}
+        tabIndex={solved ? undefined : 0}
         title={titleStr}
-        aria-pressed={isPaused}
+        aria-pressed={solved ? undefined : isPaused}
       >
         <StatusIcon className="clock__icon" aria-hidden="true" />
         <span className="clock__value">{clock}</span>
