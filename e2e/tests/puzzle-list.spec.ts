@@ -26,19 +26,23 @@ test.describe('Puzzle list', () => {
     // Wait for initial puzzles to load
     await expect(page.locator('.entry').first()).toBeVisible({timeout: 15_000});
 
-    // Type a search term and intercept the filtered API response
+    // Type a search term and wait for the filtered API response
     const responsePromise = page.waitForResponse(
       (r) => r.url().includes('/api/puzzle_list') && r.url().includes('mini')
     );
     await page.locator('input.welcome--searchbar').fill('mini');
-    const response = await responsePromise;
-    const body = await response.json();
+    await responsePromise;
 
-    // Backend should return results where every title/author matches 'mini'
-    expect(body.puzzles.length).toBeGreaterThan(0);
-    for (const p of body.puzzles) {
-      const combined = `${p.content.info.title} ${p.content.info.author}`.toLowerCase();
-      expect(combined).toContain('mini');
+    // Wait for DOM to update with filtered results
+    await expect(page.locator('.entry').first()).toBeVisible({timeout: 10_000});
+
+    // Every visible entry title/author should match 'mini'
+    const entries = page.locator('.entry');
+    const count = await entries.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const text = (await entries.nth(i).textContent()) ?? '';
+      expect(text.toLowerCase()).toContain('mini');
     }
 
     assertNoFatalErrors(consoleErrors);
@@ -53,7 +57,7 @@ test.describe('Puzzle list', () => {
     // Wait for initial puzzles to load
     await expect(page.locator('.entry').first()).toBeVisible({timeout: 15_000});
 
-    // Uncheck Midi checkbox and intercept the API response
+    // Uncheck Midi checkbox and wait for the filtered API response
     const midiCheckbox = page.locator('input[type="checkbox"][data-header="Size"][data-name="Midi"]');
     const responsePromise = page.waitForResponse(
       (r) => r.url().includes('/api/puzzle_list') && r.url().includes('Midi')
@@ -64,9 +68,8 @@ test.describe('Puzzle list', () => {
     // Verify the API request sent the correct filter
     expect(response.url()).toContain('filter%5BsizeFilter%5D%5BMidi%5D=false');
 
-    // Verify the backend processed it (returned puzzles)
-    const body = await response.json();
-    expect(body.puzzles).toBeDefined();
+    // Verify the DOM updated with filtered results
+    await expect(page.locator('.entry').first()).toBeVisible({timeout: 10_000});
 
     assertNoFatalErrors(consoleErrors);
   });
