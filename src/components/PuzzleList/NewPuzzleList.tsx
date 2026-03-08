@@ -36,15 +36,15 @@ const NewPuzzleList: React.FC<NewPuzzleListProps> = (props) => {
 
   // Fetch puzzle statuses from PostgreSQL (with localStorage cache for instant rendering)
   const statusCacheKey = user?.id ? `puzzleStatuses:${user.id}` : 'puzzleStatuses:guest';
-  const [pgStatuses, setPgStatuses] = useState<PuzzleStatuses>(() => {
+  const [pgStatuses, setPgStatuses] = useState<PuzzleStatuses>({});
+  useEffect(() => {
+    // Immediately load cached statuses for this user/guest key
     try {
       const cached = localStorage.getItem(statusCacheKey);
-      return cached ? JSON.parse(cached) : {};
+      if (cached) setPgStatuses(JSON.parse(cached));
     } catch {
-      return {};
+      // ignore
     }
-  });
-  useEffect(() => {
     let stale = false;
     const updateStatuses = (statuses: PuzzleStatuses) => {
       if (stale) return;
