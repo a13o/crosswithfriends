@@ -5,7 +5,7 @@ const options: swaggerJsdoc.Options = {
     openapi: '3.0.3',
     info: {
       title: 'Cross With Friends API',
-      version: '0.1.0',
+      version: require('../package.json').version,
       description: 'API for Cross With Friends — a collaborative crossword puzzle platform.',
     },
     servers: [{url: '/api', description: 'API base path'}],
