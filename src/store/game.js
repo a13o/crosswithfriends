@@ -156,6 +156,10 @@ export default class Game extends EventEmitter {
       event = castNullsToUndefined(event);
       this.emitWSEvent(event);
     });
+    const hasCreate = response.some((event) => event && event.type === 'create');
+    if (!hasCreate) {
+      this.emit('gameNotFound');
+    }
   }
 
   async attach() {
