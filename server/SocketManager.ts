@@ -47,13 +47,6 @@ class SocketManager {
 
     this.io.on('connection', (socket) => {
       // ======== Game Events ========= //
-      // NOTICE: join is deprecated in favor of sync_all_game_events
-      // TODO remove once #142 is fully deployed
-      socket.on('join', async (gid, ack) => {
-        socket.join(`game-${gid}`);
-        ack();
-      });
-
       socket.on('join_game', async (gid, ack) => {
         socket.join(`game-${gid}`);
         ack();
@@ -62,13 +55,6 @@ class SocketManager {
       socket.on('leave_game', async (gid, ack) => {
         socket.leave(`game-${gid}`);
         ack();
-      });
-
-      // NOTICE: sync_all is deprecated in favor of sync_all_game_events
-      // TODO remove once #142 is fully deployed
-      socket.on('sync_all', async (gid, ack) => {
-        const events = await getGameEvents(gid);
-        ack(events);
       });
 
       socket.on('sync_all_game_events', async (gid, ack) => {
