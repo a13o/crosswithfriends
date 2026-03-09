@@ -115,5 +115,6 @@ export async function addInitialGameEvent(gid: string, pid: string) {
       },
     },
   };
-  addGameEvent(gid, initialEvent);
+  await addGameEvent(gid, initialEvent);
+  return gid;
 }

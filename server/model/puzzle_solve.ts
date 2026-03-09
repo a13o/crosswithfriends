@@ -1,7 +1,6 @@
 import {PuzzleJson} from '@shared/types';
 import {pool} from './pool';
 import {dayOfWeekExtract} from './sql_helpers';
-import {computeGamesProgress} from './game_progress';
 
 export type UserSolveHistoryItem = {
   pid: string;
@@ -230,16 +229,13 @@ export async function getInProgressGames(userId: string): Promise<InProgressGame
     [dfacIds, userId]
   );
 
-  const gids = result.rows.map((r: any) => r.gid);
-  const progressMap = await computeGamesProgress(gids);
-
   return result.rows.map((r: any) => ({
     gid: r.gid,
     pid: r.pid,
     title: r.title || 'Untitled',
     size: r.size,
     lastActivity: r.last_activity ? r.last_activity.toISOString() : '',
-    percentComplete: progressMap.get(r.gid) ?? 0,
+    percentComplete: 0,
   }));
 }
 

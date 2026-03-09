@@ -36,9 +36,6 @@ describe('getInProgressGames', () => {
         },
       ],
     });
-    // Third call: computeGamesProgress events query
-    pool.query.mockResolvedValueOnce({rows: []});
-
     const result = await getInProgressGames('user-123');
 
     expect(result).toEqual([
@@ -51,7 +48,7 @@ describe('getInProgressGames', () => {
         percentComplete: 0,
       },
     ]);
-    expect(pool.query).toHaveBeenCalledTimes(3);
+    expect(pool.query).toHaveBeenCalledTimes(2);
   });
 
   it('uses "Untitled" when title is null', async () => {
@@ -59,8 +56,6 @@ describe('getInProgressGames', () => {
     pool.query.mockResolvedValueOnce({
       rows: [{gid: 'game-1', pid: 'puzzle-1', title: null, size: '15x15', last_activity: null}],
     });
-    // computeGamesProgress events query
-    pool.query.mockResolvedValueOnce({rows: []});
 
     const result = await getInProgressGames('user-123');
 
