@@ -1,6 +1,5 @@
 import {pool} from './pool';
 import {getDfacIdsForUser} from './user';
-import {computeGamesProgress} from './game_progress';
 
 export type PuzzleStatusMap = {[pid: string]: 'solved' | 'started'};
 
@@ -127,8 +126,6 @@ export async function getUserGamesForPuzzle(
   );
 
   const rows: UserGameRow[] = result.rows;
-  const unsolved = rows.filter((r) => !r.solved).map((r) => r.gid);
-  const progressMap = unsolved.length > 0 ? await computeGamesProgress(unsolved) : new Map();
 
   return rows.map((r) => ({
     gid: r.gid,
@@ -136,6 +133,6 @@ export async function getUserGamesForPuzzle(
     solved: r.solved,
     time: r.last_activity ? new Date(r.last_activity).getTime() : 0,
     v2: r.v2,
-    percentComplete: r.solved ? 100 : (progressMap.get(r.gid) ?? 0),
+    percentComplete: r.solved ? 100 : 0,
   }));
 }

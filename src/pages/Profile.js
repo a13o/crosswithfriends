@@ -181,7 +181,7 @@ function InProgressTable({inProgress, onRemove}) {
                 </Link>
               </td>
               <td>{item.size}</td>
-              <td>{item.percentComplete}%</td>
+              <td>{item.percentComplete > 0 ? `${item.percentComplete}%` : '–'}</td>
               <td>{formatDate(item.lastActivity)}</td>
               <td>
                 <Link to={`/beta/game/${item.gid}`} className="profile--replay-link" title="Resume game">
