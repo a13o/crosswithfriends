@@ -2,6 +2,7 @@ import express from 'express';
 
 const router = express.Router();
 
+// TODO: revisit oembed implementation
 router.get('/', async (req, res) => {
   console.log('got req', req.headers, req.body);
 
