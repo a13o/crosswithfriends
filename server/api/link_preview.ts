@@ -10,7 +10,6 @@ const router = express.Router();
 
 // TODO: revisit link preview implementation
 router.get('/', async (req, res) => {
-  console.log('got req', req.headers, req.body);
   let url;
 
   try {

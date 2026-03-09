@@ -37,8 +37,6 @@ const router = express.Router();
  *                 duplicate: {type: string, description: PID of existing duplicate if found}
  */
 router.post<{}, AddPuzzleResponse, AddPuzzleRequest>('/', async (req, res) => {
-  console.log('got req', req.headers, req.body);
-
   // Optional auth: extract userId if token is present
   let userId: string | null = null;
   const authHeader = req.headers.authorization;
