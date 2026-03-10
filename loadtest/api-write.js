@@ -70,10 +70,10 @@ export default function () {
     recordSolveDuration.add(res.timings.duration);
     // May fail if pid doesn't exist — that's fine for latency testing
     const ok = check(res, {
-      'record-solve: status 200 or 404 or 500': (r) =>
-        r.status === 200 || r.status === 404 || r.status === 500,
+      'record-solve: status 200 or 404': (r) =>
+        r.status === 200 || r.status === 404,
     });
-    errorRate.add(res.status >= 500);
+    errorRate.add(!ok);
   }
 
   sleep(0.5);

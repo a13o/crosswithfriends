@@ -40,8 +40,12 @@ export default function () {
     const ok = check(res, {
       'puzzle_list: status 200': (r) => r.status === 200,
       'puzzle_list: has puzzles array': (r) => {
-        const body = JSON.parse(r.body);
-        return Array.isArray(body.puzzles);
+        try {
+          const body = JSON.parse(r.body);
+          return Array.isArray(body.puzzles);
+        } catch (e) {
+          return false;
+        }
       },
     });
     errorRate.add(!ok);
