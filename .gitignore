@@ -34,6 +34,7 @@ yarn-error.log*
 backfills/*.json
 .envrc
 .env.production
+.env.prod
 .env.staging
 
 .vercel

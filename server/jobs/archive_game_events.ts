@@ -30,6 +30,7 @@ const pool = new pg.Pool({
   password: process.env.PGPASSWORD,
   database: process.env.PGDATABASE,
   ssl: process.env.NODE_ENV === 'production' ? {rejectUnauthorized: false} : undefined,
+  statement_timeout: 300000, // 5 minutes — these queries scan large tables
 });
 
 const DRY_RUN = process.env.DRY_RUN === '1';
