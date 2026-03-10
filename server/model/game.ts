@@ -4,6 +4,55 @@ import {pool} from './pool';
 import {getPuzzle} from './puzzle';
 import {getGameSnapshot} from './game_snapshot';
 
+/**
+ * Build a synthetic create event from the puzzles table + snapshot.
+ * Used when the create event has been archived/deleted but the snapshot and puzzle still exist.
+ */
+async function buildCreateEventFromPuzzle(pid: string, snapshot: any): Promise<any | null> {
+  const puzzle = await getPuzzle(pid);
+  if (!puzzle) return null;
+
+  const {
+    info = {},
+    grid: solution = [['']],
+    circles = [],
+    shades = [],
+    images = {},
+    contest = false,
+  } = puzzle;
+
+  const gridObject = makeGrid(solution, images);
+  const clues = gridObject.alignClues(puzzle.clues);
+  const grid = gridObject.toArray();
+  const snap = snapshot as any;
+
+  return {
+    user: '',
+    timestamp: 0,
+    type: 'create',
+    params: {
+      pid,
+      version: 1.0,
+      game: {
+        info,
+        grid: snap.grid || grid,
+        solution,
+        circles,
+        shades,
+        ...(Object.keys(images).length > 0 ? {images} : {}),
+        ...(contest ? {contest} : {}),
+        chat: snap.chat || {messages: []},
+        cursor: {},
+        clock: snap.clock || {lastUpdated: 0, totalTime: 0, trueTotalTime: 0, paused: true},
+        users: snap.users || {},
+        solved: true,
+        ...(contest ? {contestSolved: true} : {}),
+        clues,
+      },
+    },
+  };
+}
+
 export async function getGameEvents(gid: string) {
   // Check for a snapshot FIRST — if a non-replay snapshot exists, we only need
   // the create event (1 row) instead of loading the entire event history.
@@ -27,6 +76,10 @@ export async function getGameEvents(gid: string) {
       if (game.contest) game.contestSolved = true;
       return [createEvent];
     }
+
+    // Create event was archived — reconstruct from puzzles table
+    const syntheticEvent = await buildCreateEventFromPuzzle(snapshot.pid, snapshot.snapshot);
+    if (syntheticEvent) return [syntheticEvent];
   }
 
   // No snapshot or replay retained — load all events
@@ -38,11 +91,18 @@ export async function getGameInfo(gid: string) {
   const res = await pool.query("SELECT event_payload FROM game_events WHERE gid=$1 AND event_type='create'", [
     gid,
   ]);
-  if (res.rowCount !== 1) {
-    return {};
+  if (res.rowCount === 1) {
+    return res.rows[0].event_payload.params.game.info;
   }
 
-  return res.rows[0].event_payload.params.game.info;
+  // Create event was archived — fall back to puzzles table via snapshot pid
+  const snapshot = await getGameSnapshot(gid);
+  if (snapshot) {
+    const puzzle = await getPuzzle(snapshot.pid);
+    if (puzzle) return puzzle.info || {};
+  }
+
+  return {};
 }
 
 export interface GameEvent {
