@@ -48,10 +48,15 @@ class Play extends Component {
   }
 
   async loadGames() {
-    const accessToken = this.context?.accessToken;
-    const dfacId = getLocalId();
-    const games = await fetchUserGames(this.pid, accessToken, dfacId);
-    this.setState({games});
+    try {
+      const accessToken = this.context?.accessToken;
+      const dfacId = getLocalId();
+      const games = await fetchUserGames(this.pid, accessToken, dfacId);
+      this.setState({games});
+    } catch (e) {
+      console.warn('Failed to load games:', e);
+      this.setState({error: 'Unable to load games. Please check your connection and try again.'});
+    }
   }
 
   get pid() {
@@ -105,30 +110,46 @@ class Play extends Component {
 
   create() {
     this.setState({creating: true, error: null});
-    actions.getNextGid(async (gid) => {
-      try {
-        await createGame({gid, pid: this.pid, dfac_id: getLocalId()});
-        redirect(this.is_fencing ? `/fencing/${gid}` : `/beta/game/${gid}`);
-      } catch (e) {
-        console.error('Failed to create game:', e);
-        Sentry.captureException(e);
-        this.setState({creating: false, error: e.message || 'Failed to create game'});
-      }
-    });
+    actions
+      .getNextGid(async (gid) => {
+        try {
+          await createGame({gid, pid: this.pid, dfac_id: getLocalId()});
+          redirect(this.is_fencing ? `/fencing/${gid}` : `/beta/game/${gid}`);
+        } catch (e) {
+          console.error('Failed to create game:', e);
+          Sentry.captureException(e);
+          this.setState({creating: false, error: e.message || 'Failed to create game'});
+        }
+      })
+      .catch((e) => {
+        console.warn('Failed to create game:', e);
+        this.setState({
+          creating: false,
+          error: 'Unable to create game. Please check your connection and try again.',
+        });
+      });
   }
 
   createFencing() {
     this.setState({creating: true, error: null});
-    actions.getNextGid(async (gid) => {
-      try {
-        await createGame({gid, pid: this.pid, dfac_id: getLocalId()});
-        redirect(`/fencing/${gid}`);
-      } catch (e) {
-        console.error('Failed to create fencing game:', e);
-        Sentry.captureException(e);
-        this.setState({creating: false, error: e.message || 'Failed to create game'});
-      }
-    });
+    actions
+      .getNextGid(async (gid) => {
+        try {
+          await createGame({gid, pid: this.pid, dfac_id: getLocalId()});
+          redirect(`/fencing/${gid}`);
+        } catch (e) {
+          console.error('Failed to create fencing game:', e);
+          Sentry.captureException(e);
+          this.setState({creating: false, error: e.message || 'Failed to create game'});
+        }
+      })
+      .catch((e) => {
+        console.warn('Failed to create fencing game:', e);
+        this.setState({
+          creating: false,
+          error: 'Unable to create game. Please check your connection and try again.',
+        });
+      });
   }
 
   handleAbandonClick(e) {

@@ -30,9 +30,14 @@ export async function fetchUserGames(
 export async function fetchGuestPuzzleStatuses(
   dfacId: string
 ): Promise<{[pid: string]: 'solved' | 'started'}> {
-  const resp = await fetch(`${SERVER_URL}/api/user-games/statuses?dfac_id=${encodeURIComponent(dfacId)}`);
-  if (!resp.ok) return {};
+  try {
+    const resp = await fetch(`${SERVER_URL}/api/user-games/statuses?dfac_id=${encodeURIComponent(dfacId)}`);
+    if (!resp.ok) return {};
 
-  const data = await resp.json();
-  return data.statuses;
+    const data = await resp.json();
+    return data.statuses;
+  } catch (error) {
+    console.warn('Failed to fetch guest puzzle statuses:', error);
+    return {};
+  }
 }
