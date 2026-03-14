@@ -16,7 +16,7 @@ export type UserGameItem = {
 // ---- In-memory TTL caches ----
 // Cache key format for userGamesForPuzzleCache: "pid:dfacId1,dfacId2:userId"
 const guestPuzzleStatusCache = new TTLCache<PuzzleStatusMap>({ttlMs: 10 * 60_000, maxSize: 10_000});
-const userGamesForPuzzleCache = new TTLCache<UserGameItem[]>({ttlMs: 3 * 60_000, maxSize: 5000});
+const userGamesForPuzzleCache = new TTLCache<UserGameItem[]>({ttlMs: 3 * 60_000, maxSize: 5_000});
 
 export function clearUserGamesCache(): void {
   guestPuzzleStatusCache.clear();
