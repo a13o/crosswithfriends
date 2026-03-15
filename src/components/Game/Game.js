@@ -383,9 +383,10 @@ export default class Game extends Component {
     if (this.props.mobile) {
       width = Math.min((35 * 15 * cols) / rows, screenWidth - 20);
     } else {
-      // Size grid to fill available viewport height (nav + toolbar + clue bar + padding ≈ 185px).
-      // This makes the grid as large as possible without overflowing the screen.
-      const availableHeight = window.innerHeight - 185;
+      // Size grid to fill available viewport height without overflowing the screen.
+      // Reserved space: nav (~41px) + toolbar (~30px) + clue bar (~44px) + padding (~24px) + margin (~46px)
+      const DESKTOP_CHROME_HEIGHT = 185;
+      const availableHeight = window.innerHeight - DESKTOP_CHROME_HEIGHT;
       width = Math.min((availableHeight * cols) / rows, screenWidth - 20);
     }
     const minSize = this.props.mobile ? 1 : 20;

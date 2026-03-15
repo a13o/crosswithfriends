@@ -451,7 +451,7 @@ class Game extends Component {
       <>
         <Nav />
         <div className="flex flex--grow" style={{overflow: 'auto'}}>
-          <div className="flex--column flex--shrink-0" style={chatHidden ? {margin: '0 auto'} : undefined}>
+          <div className={`flex--column flex--shrink-0${chatHidden ? ' flex--center-h' : ''}`}>
             {this.showingGame && this.renderGame()}
           </div>
           {!chatHidden && <div className="flex flex--grow">{this.showingChat && this.renderChat()}</div>}
