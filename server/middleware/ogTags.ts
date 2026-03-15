@@ -10,8 +10,16 @@ import {InfoJson} from '../../src/shared/types';
 const GAME_PATH_RE = /^\/(?:beta\/)?game\/([^/]+)$/;
 const PLAY_PATH_RE = /^\/beta\/play\/([^/]+)$/;
 
+/** Base URL for canonical URLs and OG image references. Falls back to production. */
+const BASE_URL = process.env.FRONTEND_URL || 'https://crosswithfriends.com';
+
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function buildOgHtml(info: InfoJson, canonicalUrl: string, ua: string): string {
@@ -29,9 +37,8 @@ function buildOgHtml(info: InfoJson, canonicalUrl: string, ua: string): string {
     ? [info.title, info.author, info.description].filter(Boolean).map(escapeHtml).join(' | ')
     : title;
 
-  const oembedUrl = author
-    ? `https://crosswithfriends.com/api/oembed?author=${encodeURIComponent(info.author)}`
-    : '';
+  const oembedUrl = author ? `${BASE_URL}/api/oembed?author=${encodeURIComponent(info.author)}` : '';
+  const imageUrl = `${BASE_URL}/pwa-512x512.png`;
 
   return `<!doctype html>
 <html prefix="og: https://ogp.me/ns/website#">
@@ -41,12 +48,12 @@ function buildOgHtml(info: InfoJson, canonicalUrl: string, ua: string): string {
     <meta property="og:type" content="website" />
     <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
     <meta property="og:description" content="${description}" />
-    <meta property="og:image" content="https://crosswithfriends.com/pwa-512x512.png" />
+    <meta property="og:image" content="${imageUrl}" />
     <meta property="og:site_name" content="Cross with Friends" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${titleContent}" />
     <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="https://crosswithfriends.com/pwa-512x512.png" />
+    <meta name="twitter:image" content="${imageUrl}" />
     <meta name="theme-color" content="#6aa9f4" />
     ${oembedUrl ? `<link type="application/json+oembed" href="${escapeHtml(oembedUrl)}" />` : ''}
   </head>
@@ -55,31 +62,25 @@ function buildOgHtml(info: InfoJson, canonicalUrl: string, ua: string): string {
 }
 
 /**
- * Cache for the SPA index.html content.
+ * Cache for the SPA index.html content, loaded once at startup.
  * When Render rewrites game/puzzle paths to the backend, non-bot requests
  * need to receive the SPA shell so the React app boots normally.
  */
-let spaHtmlCache: string | null = null;
-
-function getSpaHtml(): string | null {
-  if (spaHtmlCache) return spaHtmlCache;
-
+const spaHtmlCache: string | null = (() => {
   // Try the production build directory first
   const buildIndex = path.join(__dirname, '..', '..', 'build', 'index.html');
   if (fs.existsSync(buildIndex)) {
-    spaHtmlCache = fs.readFileSync(buildIndex, 'utf-8');
-    return spaHtmlCache;
+    return fs.readFileSync(buildIndex, 'utf-8');
   }
 
   // Fall back to the source index.html (dev mode)
   const srcIndex = path.join(__dirname, '..', '..', 'index.html');
   if (fs.existsSync(srcIndex)) {
-    spaHtmlCache = fs.readFileSync(srcIndex, 'utf-8');
-    return spaHtmlCache;
+    return fs.readFileSync(srcIndex, 'utf-8');
   }
 
   return null;
-}
+})();
 
 /**
  * Middleware that intercepts game/puzzle URLs.
@@ -88,8 +89,10 @@ function getSpaHtml(): string | null {
  *   (Only relevant when Render rewrites route these paths to the backend.)
  */
 export function ogTagsMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const isGamePath = GAME_PATH_RE.test(req.path) || PLAY_PATH_RE.test(req.path);
-  if (!isGamePath) {
+  const gameMatch = req.path.match(GAME_PATH_RE);
+  const playMatch = req.path.match(PLAY_PATH_RE);
+
+  if (!gameMatch && !playMatch) {
     next();
     return;
   }
@@ -98,12 +101,10 @@ export function ogTagsMiddleware(req: Request, res: Response, next: NextFunction
 
   // Bot request — serve dynamic OG tags
   if (islinkExpanderBot(ua)) {
-    const gameMatch = req.path.match(GAME_PATH_RE);
     if (gameMatch) {
       handleGameOg(gameMatch[1], res, ua);
       return;
     }
-    const playMatch = req.path.match(PLAY_PATH_RE);
     if (playMatch) {
       handlePuzzleOg(playMatch[1], res, ua);
       return;
@@ -112,12 +113,9 @@ export function ogTagsMiddleware(req: Request, res: Response, next: NextFunction
 
   // Non-bot request — serve the SPA shell if available (for Render rewrite setup)
   // When SERVE_STATIC is set, Express static middleware handles this instead, so skip.
-  if (!process.env.SERVE_STATIC) {
-    const spaHtml = getSpaHtml();
-    if (spaHtml) {
-      res.send(spaHtml);
-      return;
-    }
+  if (!process.env.SERVE_STATIC && spaHtmlCache) {
+    res.send(spaHtmlCache);
+    return;
   }
 
   next();
@@ -130,7 +128,7 @@ async function handleGameOg(gid: string, res: Response, ua: string) {
       res.status(404).send('Game not found');
       return;
     }
-    const canonicalUrl = `https://crosswithfriends.com/game/${gid}`;
+    const canonicalUrl = `${BASE_URL}/game/${gid}`;
     res.send(buildOgHtml(info, canonicalUrl, ua));
   } catch (err) {
     console.error(`[OG Tags] Error fetching game info for ${gid}:`, err);
@@ -145,7 +143,7 @@ async function handlePuzzleOg(pid: string, res: Response, ua: string) {
       res.status(404).send('Puzzle not found');
       return;
     }
-    const canonicalUrl = `https://crosswithfriends.com/beta/play/${pid}`;
+    const canonicalUrl = `${BASE_URL}/beta/play/${pid}`;
     res.send(buildOgHtml(info, canonicalUrl, ua));
   } catch (err) {
     console.error(`[OG Tags] Error fetching puzzle info for ${pid}:`, err);
