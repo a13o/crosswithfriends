@@ -15,6 +15,7 @@
  *
  * Environment variables:
  *   DRY_RUN            - Set to "1" for read-only mode (default: 0)
+ *   GRACE_DAYS         - Grace period after solve before deleting events, in days (default: 1)
  *   ABANDON_DAYS       - Inactivity threshold for abandoned games in days (default: 90)
  *   EXPIRE_REPLAY_DAYS - Auto-expire replay_retained after N days, 0 = disabled (default: 0)
  */
@@ -31,6 +32,7 @@ const pool = new pg.Pool({
 });
 
 const DRY_RUN = process.env.DRY_RUN === '1';
+const GRACE_DAYS = parseInt(process.env.GRACE_DAYS || '1', 10);
 const ABANDON_DAYS = parseInt(process.env.ABANDON_DAYS || '90', 10);
 const EXPIRE_REPLAY_DAYS = parseInt(process.env.EXPIRE_REPLAY_DAYS || '0', 10);
 
@@ -56,8 +58,11 @@ async function cleanupSolvedGames(): Promise<CleanupStats> {
          COUNT(*) AS events
        FROM game_events ge
        INNER JOIN game_snapshots gs ON gs.gid = ge.gid
+       INNER JOIN puzzle_solves ps ON ps.gid = ge.gid
        WHERE gs.replay_retained = false
-         AND ge.event_type != 'create'`
+         AND ps.solved_time < NOW() - ($1 || ' days')::interval
+         AND ge.event_type != 'create'`,
+      [String(GRACE_DAYS)]
     );
     stats.gamesProcessed = Number(games);
     stats.eventsDeleted = Number(events);
@@ -67,10 +72,13 @@ async function cleanupSolvedGames(): Promise<CleanupStats> {
 
   const result = await pool.query(
     `DELETE FROM game_events ge
-     USING game_snapshots gs
+     USING game_snapshots gs, puzzle_solves ps
      WHERE gs.gid = ge.gid
+       AND ps.gid = ge.gid
        AND gs.replay_retained = false
-       AND ge.event_type != 'create'`
+       AND ps.solved_time < NOW() - ($1 || ' days')::interval
+       AND ge.event_type != 'create'`,
+    [String(GRACE_DAYS)]
   );
   stats.eventsDeleted = result.rowCount || 0;
   console.log(`  Deleted ${stats.eventsDeleted} events from solved games`);
@@ -169,7 +177,7 @@ async function expireReplayRetention(): Promise<number> {
 async function main() {
   console.log('=== Game Events Archive Job ===');
   console.log(`Mode: ${DRY_RUN ? 'DRY RUN' : 'LIVE'}`);
-  console.log(`Settings: ABANDON_DAYS=${ABANDON_DAYS}`);
+  console.log(`Settings: GRACE_DAYS=${GRACE_DAYS}, ABANDON_DAYS=${ABANDON_DAYS}`);
   console.log(`  EXPIRE_REPLAY_DAYS=${EXPIRE_REPLAY_DAYS}`);
   console.log('');
 
