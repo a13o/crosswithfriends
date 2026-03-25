@@ -57,10 +57,10 @@ export async function getUserSolveStats(userId: string): Promise<{
     // mode_solves: best time per puzzle per mode; all_solves: best time per puzzle overall.
     pool.query(
       `WITH mode_solves AS (
-        SELECT DISTINCT ON (ps.pid, CASE WHEN ps.player_count = 1 THEN 'solo' ELSE 'coop' END)
+        SELECT DISTINCT ON (ps.pid, CASE WHEN COALESCE(ps.player_count, 1) = 1 THEN 'solo' ELSE 'coop' END)
           ps.pid,
           ps.time_taken_to_solve AS best_time,
-          CASE WHEN ps.player_count = 1 THEN 'solo' ELSE 'coop' END AS solve_mode,
+          CASE WHEN COALESCE(ps.player_count, 1) = 1 THEN 'solo' ELSE 'coop' END AS solve_mode,
           GREATEST(jsonb_array_length(p.content->'grid'), jsonb_array_length(p.content->'grid'->0))::text
             || 'x' ||
           LEAST(jsonb_array_length(p.content->'grid'), jsonb_array_length(p.content->'grid'->0))::text
@@ -69,7 +69,7 @@ export async function getUserSolveStats(userId: string): Promise<{
         FROM puzzle_solves ps
         JOIN puzzles p ON ps.pid = p.pid
         WHERE ps.user_id = $1
-        ORDER BY ps.pid, CASE WHEN ps.player_count = 1 THEN 'solo' ELSE 'coop' END, ps.time_taken_to_solve ASC
+        ORDER BY ps.pid, CASE WHEN COALESCE(ps.player_count, 1) = 1 THEN 'solo' ELSE 'coop' END, ps.time_taken_to_solve ASC
       ),
       all_solves AS (
         SELECT DISTINCT ON (pid) pid, best_time, size, dow
