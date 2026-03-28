@@ -42,16 +42,18 @@ export default class Upload extends Component {
       private: !isPublic,
     };
     // store in pg
-    actions.createPuzzle(puzzle, (pid) => {
-      this.setState({puzzle: null, recentUnlistedPid: isPublic ? undefined : pid});
+    actions
+      .createPuzzle(puzzle, (pid) => {
+        this.setState({puzzle: null, recentUnlistedPid: isPublic ? undefined : pid});
 
-      createNewPuzzle(puzzle, pid, {
-        isPublic,
-        accessToken: this.context?.accessToken,
+        createNewPuzzle(puzzle, pid, {
+          isPublic,
+          accessToken: this.context?.accessToken,
+        })
+          .then((response) => this.handleUploadSuccess(response, isPublic))
+          .catch(this.handleUploadFail);
       })
-        .then((response) => this.handleUploadSuccess(response, isPublic))
-        .catch(this.handleUploadFail);
-    });
+      .catch(this.handleUploadFail);
   };
 
   fail = () => {
