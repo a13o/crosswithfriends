@@ -526,7 +526,6 @@ export default class GridControls extends Component {
           data-lpignore="true"
           data-bw-ignore="true"
           data-form-type="other"
-          aria-hidden="true"
         />
       </div>
     );
