@@ -307,7 +307,7 @@ export async function getUserUploadedPuzzles(userId: string) {
   const {rows} = await pool.query(
     `SELECT pid,
             COALESCE(content->'info'->>'titleOverride', content->'info'->>'title') as title,
-            CASE WHEN content->'info'->>'titleOverride' IS NOT NULL THEN content->'info'->>'title' END as original_title,
+            CASE WHEN COALESCE(content->'info'->>'titleOverride', content->'info'->>'authorOverride') IS NOT NULL THEN content->'info'->>'title' END as original_title,
             uploaded_at, times_solved, is_public,
             jsonb_array_length(content->'grid') as rows,
             jsonb_array_length(content->'grid'->0) as cols

@@ -94,7 +94,7 @@ export async function getUserSolveStats(userId: string): Promise<{
       `SELECT
          ps.pid, ps.gid, ps.time_taken_to_solve, ps.solved_time, ps.player_count,
          COALESCE(p.content->'info'->>'titleOverride', p.content->'info'->>'title') AS title,
-         CASE WHEN p.content->'info'->>'titleOverride' IS NOT NULL THEN p.content->'info'->>'title' END AS original_title,
+         CASE WHEN COALESCE(p.content->'info'->>'titleOverride', p.content->'info'->>'authorOverride') IS NOT NULL THEN p.content->'info'->>'title' END AS original_title,
          GREATEST(jsonb_array_length(p.content->'grid'), jsonb_array_length(p.content->'grid'->0))::text
            || 'x' ||
          LEAST(jsonb_array_length(p.content->'grid'), jsonb_array_length(p.content->'grid'->0))::text
@@ -243,7 +243,7 @@ export async function getInProgressGames(userId: string): Promise<InProgressGame
          ug.gid,
          COALESCE(ce.event_payload->'params'->>'pid', fh.pid::text) AS pid,
          COALESCE(p.content->'info'->>'titleOverride', p.content->'info'->>'title', p2.content->'info'->>'titleOverride', p2.content->'info'->>'title', 'Untitled') AS title,
-         CASE WHEN COALESCE(p.content->'info'->>'titleOverride', p2.content->'info'->>'titleOverride') IS NOT NULL THEN COALESCE(p.content->'info'->>'title', p2.content->'info'->>'title') END AS original_title,
+         CASE WHEN COALESCE(p.content->'info'->>'titleOverride', p2.content->'info'->>'titleOverride', p.content->'info'->>'authorOverride', p2.content->'info'->>'authorOverride') IS NOT NULL THEN COALESCE(p.content->'info'->>'title', p2.content->'info'->>'title') END AS original_title,
          COALESCE(
            GREATEST(jsonb_array_length(p.content->'grid'), jsonb_array_length(p.content->'grid'->0))::text
              || 'x' ||
