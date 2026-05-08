@@ -479,14 +479,14 @@ describe('recordSolve', () => {
     expect(dedupSql).toContain('user_id IS NULL');
   });
 
-  it('calls ROLLBACK on error and releases client', async () => {
+  it('rolls back, releases the client, and rethrows on error', async () => {
     pool.query.mockResolvedValueOnce({rows: [{count: 0}]});
     mockClient.query
       .mockResolvedValueOnce({rows: []}) // BEGIN
       .mockRejectedValueOnce(new Error('db error')); // SELECT FOR UPDATE fails
     mockClient.query.mockResolvedValueOnce({rows: []}); // ROLLBACK
 
-    await recordSolve('p1', 'g1', 300, 'user-1');
+    await expect(recordSolve('p1', 'g1', 300, 'user-1')).rejects.toThrow('db error');
 
     const rollbackCall = mockClient.query.mock.calls.find((c: any[]) => c[0] === 'ROLLBACK');
     expect(rollbackCall).toBeDefined();

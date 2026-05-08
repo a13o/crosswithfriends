@@ -381,8 +381,10 @@ export async function recordSolve(
       await client.query(`UPDATE puzzles SET times_solved = times_solved + 1 WHERE pid = $1`, [pid]);
     }
     await client.query('COMMIT');
-  } catch (_e) {
+  } catch (e) {
     await client.query('ROLLBACK');
+    console.error(`[recordSolve] failed for pid=${pid} gid=${gid}:`, e);
+    throw e;
   } finally {
     client.release();
   }

@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import {RecordSolveRequest, RecordSolveResponse} from '../../src/shared/types';
 import {recordSolve} from '../model/puzzle';
@@ -56,12 +57,27 @@ router.post<{pid: string}, RecordSolveResponse, RecordSolveRequest>('/:pid', asy
   }
 
   try {
-    await recordSolve(req.params.pid, gid, time_to_solve, userId, player_count);
+    let solveRecorded = true;
+    try {
+      await recordSolve(req.params.pid, gid, time_to_solve, userId, player_count);
+    } catch (solveErr) {
+      // Don't abort the snapshot save: a snapshot without a puzzle_solves row
+      // is still useful to the user (the game page can reload the solved grid).
+      // Tag this report with the orphan context so it's distinguishable from
+      // unrelated DB errors when we triage Sentry.
+      solveRecorded = false;
+      Sentry.captureException(solveErr, {
+        level: 'warning',
+        extra: {pid: req.params.pid, gid, userId, time_to_solve, note: 'snapshot orphaned by solve failure'},
+      });
+    }
     if (snapshot) {
       await saveGameSnapshot(gid, req.params.pid, snapshot, !!keep_replay);
     }
-    // Invalidate caches so solved game disappears from in-progress lists
-    if (userId) {
+    // Invalidate caches so solved game disappears from in-progress lists.
+    // Skip when the solve insert failed — the cached "in progress" view is
+    // still accurate, and we don't want to mask the underlying problem.
+    if (userId && solveRecorded) {
       invalidateInProgressCacheForUser(userId);
       invalidateAuthPuzzleStatusCache(userId);
       const dfacIds = await getDfacIdsForUser(userId);
