@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import _ from 'lodash';
 import Joi from 'joi';
+import * as Sentry from '@sentry/node';
 import {PuzzleJson, ListPuzzleRequestFilters, AddPuzzleResult} from '@shared/types';
 import {pool} from './pool';
 import {dayOfWeekExtract} from './sql_helpers';
@@ -381,8 +382,11 @@ export async function recordSolve(
       await client.query(`UPDATE puzzles SET times_solved = times_solved + 1 WHERE pid = $1`, [pid]);
     }
     await client.query('COMMIT');
-  } catch (_e) {
+  } catch (e) {
     await client.query('ROLLBACK');
+    Sentry.captureException(e, {extra: {pid, gid, userId, timeToSolve, playerCount}});
+    console.error(`[recordSolve] failed for pid=${pid} gid=${gid}:`, e);
+    throw e;
   } finally {
     client.release();
   }

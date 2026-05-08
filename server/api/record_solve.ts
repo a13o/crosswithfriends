@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import {RecordSolveRequest, RecordSolveResponse} from '../../src/shared/types';
 import {recordSolve} from '../model/puzzle';
@@ -56,12 +57,27 @@ router.post<{pid: string}, RecordSolveResponse, RecordSolveRequest>('/:pid', asy
   }
 
   try {
-    await recordSolve(req.params.pid, gid, time_to_solve, userId, player_count);
+    let solveRecorded = true;
+    try {
+      await recordSolve(req.params.pid, gid, time_to_solve, userId, player_count);
+    } catch (solveErr) {
+      // Don't abort the snapshot save: a snapshot without a puzzle_solves row
+      // is still useful to the user (the game page can reload the solved grid).
+      // recordSolve already logs and reports to Sentry; we tag the gid here so
+      // the report surfaces "snapshot orphaned by solve failure" cases.
+      solveRecorded = false;
+      Sentry.captureMessage('recordSolve failed; snapshot will be saved without solve record', {
+        level: 'warning',
+        extra: {pid: req.params.pid, gid, userId, time_to_solve, error: String(solveErr)},
+      });
+    }
     if (snapshot) {
       await saveGameSnapshot(gid, req.params.pid, snapshot, !!keep_replay);
     }
-    // Invalidate caches so solved game disappears from in-progress lists
-    if (userId) {
+    // Invalidate caches so solved game disappears from in-progress lists.
+    // Skip when the solve insert failed — the cached "in progress" view is
+    // still accurate, and we don't want to mask the underlying problem.
+    if (userId && solveRecorded) {
       invalidateInProgressCacheForUser(userId);
       invalidateAuthPuzzleStatusCache(userId);
       const dfacIds = await getDfacIdsForUser(userId);
