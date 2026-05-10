@@ -8,6 +8,7 @@ test.describe('Dark mode', () => {
     await assertPageRendered(page);
 
     const routerWrapper = page.locator('.router-wrapper');
+    const darkModeButton = page.getByRole('button', {name: /^Dark Mode:/});
 
     // Initially dark mode should be off
     await expect(routerWrapper).not.toHaveClass(/\bdark\b/);
@@ -17,11 +18,11 @@ test.describe('Dark mode', () => {
     await expect(page.locator('.nav--user-menu--dropdown')).toBeVisible();
 
     // Should show "Dark Mode: Off"
-    await expect(page.getByRole('button', {name: /^Dark Mode:/})).toContainText('Dark Mode: Off');
+    await expect(darkModeButton).toContainText('Dark Mode: Off');
 
     // Toggle to On
-    await page.getByRole('button', {name: /^Dark Mode:/}).click();
-    await expect(page.getByRole('button', {name: /^Dark Mode:/})).toContainText('Dark Mode: On');
+    await darkModeButton.click();
+    await expect(darkModeButton).toContainText('Dark Mode: On');
     await expect(routerWrapper).toHaveClass(/\bdark\b/);
 
     // Body should also have dark class
@@ -29,12 +30,12 @@ test.describe('Dark mode', () => {
     expect(bodyHasDark).toBe(true);
 
     // Toggle to System
-    await page.getByRole('button', {name: /^Dark Mode:/}).click();
-    await expect(page.getByRole('button', {name: /^Dark Mode:/})).toContainText('Dark Mode: System');
+    await darkModeButton.click();
+    await expect(darkModeButton).toContainText('Dark Mode: System');
 
     // Toggle back to Off
-    await page.getByRole('button', {name: /^Dark Mode:/}).click();
-    await expect(page.getByRole('button', {name: /^Dark Mode:/})).toContainText('Dark Mode: Off');
+    await darkModeButton.click();
+    await expect(darkModeButton).toContainText('Dark Mode: Off');
     await expect(routerWrapper).not.toHaveClass(/\bdark\b/);
 
     assertNoFatalErrors(consoleErrors);
