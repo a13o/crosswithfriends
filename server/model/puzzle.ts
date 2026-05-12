@@ -42,6 +42,19 @@ export function clearPuzzleListCache(): void {
   puzzleListCache.clear();
 }
 
+// ---- Puzzle stats cache ----
+// Median solve time moves glacially; aggressive caching is safe and cuts repeat queries on
+// popular puzzles to a single DB hit per TTL window. Keyed by pid.
+const puzzleStatsCache = new TTLCache<PuzzleStats>({
+  ttlMs: 5 * 60 * 1000,
+  maxSize: 5_000,
+  sweepIntervalMs: 10 * 60 * 1000,
+});
+
+export function clearPuzzleStatsCache(): void {
+  puzzleStatsCache.clear();
+}
+
 export async function getPuzzle(pid: string): Promise<PuzzleJson | null> {
   const {rows} = await pool.query(
     `
@@ -424,6 +437,9 @@ export async function recordSolve(
       await client.query(`UPDATE puzzles SET times_solved = times_solved + 1 WHERE pid = $1`, [pid]);
     }
     await client.query('COMMIT');
+    if (insertResult.rowCount === 1) {
+      puzzleStatsCache.delete(pid);
+    }
   } catch (e) {
     await client.query('ROLLBACK');
     console.error(`[recordSolve] failed for pid=${pid} gid=${gid}:`, e);
@@ -455,28 +471,30 @@ export type PuzzleStats = {
 };
 
 export async function getPuzzleStats(pid: string): Promise<PuzzleStats> {
-  // "Clean" solve: no reveal events ever fired for the game, non-zero time, under the cap.
-  // game_events_gid_event_type_idx makes the NOT EXISTS cheap.
-  const {rows} = await pool.query(
-    `SELECT
-       COUNT(*)::int AS sample_count,
-       CASE WHEN COUNT(*) >= $3
-         THEN PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ps.time_taken_to_solve)::int
-         ELSE NULL
-       END AS median_ms
-     FROM puzzle_solves ps
-     WHERE ps.pid = $1
-       AND ps.time_taken_to_solve > 0
-       AND ps.time_taken_to_solve < $2
-       AND NOT EXISTS (
-         SELECT 1 FROM game_events ge
-         WHERE ge.gid = ps.gid AND ge.event_type = 'reveal'
-       )`,
-    [pid, PUZZLE_STATS_TIME_CAP_MS, PUZZLE_STATS_MIN_SAMPLES]
-  );
-  const row = rows[0] || {sample_count: 0, median_ms: null};
-  return {
-    sampleCount: Number(row.sample_count) || 0,
-    medianMs: row.median_ms != null ? Number(row.median_ms) : null,
-  };
+  return puzzleStatsCache.getOrFetch(pid, async () => {
+    // "Clean" solve: no reveal events ever fired for the game, non-zero time, under the cap.
+    // game_events_gid_event_type_idx makes the NOT EXISTS cheap.
+    const {rows} = await pool.query(
+      `SELECT
+         COUNT(*)::int AS sample_count,
+         CASE WHEN COUNT(*) >= $3
+           THEN PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ps.time_taken_to_solve)::int
+           ELSE NULL
+         END AS median_ms
+       FROM puzzle_solves ps
+       WHERE ps.pid = $1
+         AND ps.time_taken_to_solve > 0
+         AND ps.time_taken_to_solve < $2
+         AND NOT EXISTS (
+           SELECT 1 FROM game_events ge
+           WHERE ge.gid = ps.gid AND ge.event_type = 'reveal'
+         )`,
+      [pid, PUZZLE_STATS_TIME_CAP_MS, PUZZLE_STATS_MIN_SAMPLES]
+    );
+    const row = rows[0] || {sample_count: 0, median_ms: null};
+    return {
+      sampleCount: Number(row.sample_count) || 0,
+      medianMs: row.median_ms != null ? Number(row.median_ms) : null,
+    };
+  });
 }
