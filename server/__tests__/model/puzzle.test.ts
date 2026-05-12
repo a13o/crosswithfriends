@@ -10,6 +10,9 @@ import {
   addPuzzle,
   recordSolve,
   getPuzzleInfo,
+  getPuzzleStats,
+  PUZZLE_STATS_MIN_SAMPLES,
+  PUZZLE_STATS_TIME_CAP_MS,
   clearPuzzleListCache,
 } from '../../model/puzzle';
 
@@ -582,5 +585,42 @@ describe('getPuzzleInfo', () => {
     pool.query.mockResolvedValueOnce({rows: [{content: {info, grid: [], clues: {across: [], down: []}}}]});
     const result = await getPuzzleInfo('p1');
     expect(result).toEqual(info);
+  });
+});
+
+describe('getPuzzleStats', () => {
+  beforeEach(() => {
+    resetPoolMocks();
+  });
+
+  it('returns the median and sample count when the threshold is met', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 42, median_ms: 1122334}]});
+    const result = await getPuzzleStats('p1');
+    expect(result).toEqual({sampleCount: 42, medianMs: 1122334});
+  });
+
+  it('returns null median when below the sample threshold', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 7, median_ms: null}]});
+    const result = await getPuzzleStats('p1');
+    expect(result).toEqual({sampleCount: 7, medianMs: null});
+  });
+
+  it('handles an empty result row (no solves at all)', async () => {
+    pool.query.mockResolvedValueOnce({rows: []});
+    const result = await getPuzzleStats('p1');
+    expect(result).toEqual({sampleCount: 0, medianMs: null});
+  });
+
+  it('filters by pid, excludes zero-time and over-cap solves, and excludes reveal games', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 0, median_ms: null}]});
+    await getPuzzleStats('p1');
+    const [sql, params] = pool.query.mock.calls[0];
+    expect(sql).toContain('FROM puzzle_solves');
+    expect(sql).toContain('ps.time_taken_to_solve > 0');
+    expect(sql).toContain('ps.time_taken_to_solve < $2');
+    expect(sql).toContain("event_type = 'reveal'");
+    expect(sql).toContain('NOT EXISTS');
+    expect(sql).toContain('PERCENTILE_CONT(0.5)');
+    expect(params).toEqual(['p1', PUZZLE_STATS_TIME_CAP_MS, PUZZLE_STATS_MIN_SAMPLES]);
   });
 });

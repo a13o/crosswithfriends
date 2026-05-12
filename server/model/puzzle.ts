@@ -439,3 +439,44 @@ export async function getPuzzleInfo(pid: string) {
   const {info = {}} = puzzle;
   return info;
 }
+
+// Solves longer than this are treated as "started a game, came back days later" rather than
+// real attempts. Two hours covers slow Sunday solvers without letting overnight idles skew the
+// median.
+export const PUZZLE_STATS_TIME_CAP_MS = 2 * 60 * 60 * 1000;
+
+// Hide the median until we have a stable sample. Below this it's too noisy to be useful as a
+// difficulty signal.
+export const PUZZLE_STATS_MIN_SAMPLES = 25;
+
+export type PuzzleStats = {
+  sampleCount: number;
+  medianMs: number | null;
+};
+
+export async function getPuzzleStats(pid: string): Promise<PuzzleStats> {
+  // "Clean" solve: no reveal events ever fired for the game, non-zero time, under the cap.
+  // game_events_gid_event_type_idx makes the NOT EXISTS cheap.
+  const {rows} = await pool.query(
+    `SELECT
+       COUNT(*)::int AS sample_count,
+       CASE WHEN COUNT(*) >= $3
+         THEN PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ps.time_taken_to_solve)::int
+         ELSE NULL
+       END AS median_ms
+     FROM puzzle_solves ps
+     WHERE ps.pid = $1
+       AND ps.time_taken_to_solve > 0
+       AND ps.time_taken_to_solve < $2
+       AND NOT EXISTS (
+         SELECT 1 FROM game_events ge
+         WHERE ge.gid = ps.gid AND ge.event_type = 'reveal'
+       )`,
+    [pid, PUZZLE_STATS_TIME_CAP_MS, PUZZLE_STATS_MIN_SAMPLES]
+  );
+  const row = rows[0] || {sample_count: 0, median_ms: null};
+  return {
+    sampleCount: Number(row.sample_count) || 0,
+    medianMs: row.median_ms != null ? Number(row.median_ms) : null,
+  };
+}

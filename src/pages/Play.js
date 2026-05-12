@@ -13,8 +13,9 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import actions from '../actions';
 import redirect from '../lib/redirect';
 import {createGame, dismissGame} from '../api/create_game';
-import {fetchPuzzleInfo} from '../api/puzzle';
+import {fetchPuzzleInfo, fetchPuzzleStats} from '../api/puzzle';
 import {fetchUserGames} from '../api/user_games';
+import {formatMilliseconds} from '../components/Toolbar/Clock';
 import getLocalId from '../localAuth';
 import AuthContext from '../lib/AuthContext';
 
@@ -39,6 +40,7 @@ class Play extends Component {
       games: null,
       creating: false,
       puzzleInfo: null,
+      puzzleStats: null,
       abandonGid: null,
       error: null,
     };
@@ -67,6 +69,10 @@ class Play extends Component {
 
     fetchPuzzleInfo(this.pid).then((info) => {
       if (info) this.setState({puzzleInfo: info});
+    });
+
+    fetchPuzzleStats(this.pid).then((stats) => {
+      if (stats) this.setState({puzzleStats: stats});
     });
   }
 
@@ -252,6 +258,12 @@ class Play extends Component {
               <div className="play--puzzle-original">
                 Originally: {this.state.puzzleInfo.title}
                 {this.state.puzzleInfo.authorOverride ? ` by ${this.state.puzzleInfo.author}` : ''}
+              </div>
+            )}
+            {this.state.puzzleStats && this.state.puzzleStats.medianMs != null && (
+              <div className="play--puzzle-stats">
+                Typical solve time: {formatMilliseconds(this.state.puzzleStats.medianMs)} (
+                {this.state.puzzleStats.sampleCount} solves)
               </div>
             )}
           </div>

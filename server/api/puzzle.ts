@@ -1,7 +1,7 @@
 import {AddPuzzleResponse, AddPuzzleRequest} from '@shared/types';
 import express from 'express';
 
-import {addPuzzle, getPuzzleInfo} from '../model/puzzle';
+import {addPuzzle, getPuzzleInfo, getPuzzleStats} from '../model/puzzle';
 import {verifyAccessToken} from '../auth/jwt';
 
 const router = express.Router();
@@ -86,6 +86,42 @@ router.get<{pid: string}>('/:pid/info', async (req, res, next) => {
       return;
     }
     res.json(info);
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * @openapi
+ * /puzzle/{pid}/stats:
+ *   get:
+ *     tags: [Puzzles]
+ *     summary: Get aggregate solve stats for a puzzle
+ *     description: |
+ *       Returns the median completion time across "clean" solves (no reveals used, non-zero
+ *       time, under a 2-hour cap). The median is only populated once a minimum sample size
+ *       has been reached; below that the response contains only `sampleCount`.
+ *     parameters:
+ *       - in: path
+ *         name: pid
+ *         required: true
+ *         schema: {type: string}
+ *         description: Puzzle ID
+ *     responses:
+ *       200:
+ *         description: Puzzle stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sampleCount: {type: integer, description: Number of clean solves included}
+ *                 medianMs: {type: integer, nullable: true, description: Median solve time in ms, or null if below threshold}
+ */
+router.get<{pid: string}>('/:pid/stats', async (req, res, next) => {
+  try {
+    const stats = await getPuzzleStats(req.params.pid);
+    res.json(stats);
   } catch (e) {
     next(e);
   }
