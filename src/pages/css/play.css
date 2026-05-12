@@ -30,6 +30,12 @@
   margin-top: 2px;
 }
 
+.play--puzzle-stats {
+  font-size: 12px;
+  color: #666;
+  margin-top: 6px;
+}
+
 .play--table {
   width: 100%;
   border-collapse: collapse;
@@ -112,6 +118,10 @@
 
 .dark .play--puzzle-original {
   color: rgb(255 255 255 / 35%);
+}
+
+.dark .play--puzzle-stats {
+  color: #aaa;
 }
 
 .dark .play--table td {

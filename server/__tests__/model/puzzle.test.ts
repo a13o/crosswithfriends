@@ -10,7 +10,11 @@ import {
   addPuzzle,
   recordSolve,
   getPuzzleInfo,
+  getPuzzleStats,
+  PUZZLE_STATS_MIN_SAMPLES,
+  PUZZLE_STATS_TIME_CAP_MS,
   clearPuzzleListCache,
+  clearPuzzleStatsCache,
 } from '../../model/puzzle';
 
 describe('listPuzzles', () => {
@@ -582,5 +586,84 @@ describe('getPuzzleInfo', () => {
     pool.query.mockResolvedValueOnce({rows: [{content: {info, grid: [], clues: {across: [], down: []}}}]});
     const result = await getPuzzleInfo('p1');
     expect(result).toEqual(info);
+  });
+});
+
+describe('getPuzzleStats', () => {
+  beforeEach(() => {
+    resetPoolMocks();
+    clearPuzzleStatsCache();
+  });
+
+  it('returns the median and sample count when the threshold is met', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 42, median_ms: 1122334}]});
+    const result = await getPuzzleStats('p1');
+    expect(result).toEqual({sampleCount: 42, medianMs: 1122334});
+  });
+
+  it('returns null median when below the sample threshold', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 7, median_ms: null}]});
+    const result = await getPuzzleStats('p2');
+    expect(result).toEqual({sampleCount: 7, medianMs: null});
+  });
+
+  it('handles an empty result row (no solves at all)', async () => {
+    pool.query.mockResolvedValueOnce({rows: []});
+    const result = await getPuzzleStats('p3');
+    expect(result).toEqual({sampleCount: 0, medianMs: null});
+  });
+
+  it('filters by pid and excludes zero-time and over-cap solves', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 0, median_ms: null}]});
+    await getPuzzleStats('p4');
+    const [sql, params] = pool.query.mock.calls[0];
+    expect(sql).toContain('FROM puzzle_solves');
+    expect(sql).toContain('ps.time_taken_to_solve > 0');
+    expect(sql).toContain('ps.time_taken_to_solve < $2');
+    expect(sql).toContain('PERCENTILE_CONT(0.5)');
+    // No reveal-filter: that would require joining game_events, which is archived
+    // away on solved games. See comment in getPuzzleStats.
+    expect(sql).not.toContain('game_events');
+    expect(params).toEqual(['p4', PUZZLE_STATS_TIME_CAP_MS, PUZZLE_STATS_MIN_SAMPLES]);
+  });
+
+  it('aggregates per gid so co-op games are counted once, not once per user', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 0, median_ms: null}]});
+    await getPuzzleStats('p4b');
+    const [sql] = pool.query.mock.calls[0];
+    // MAX over the per-user clocks approximates total game duration. MIN would
+    // bias downward toward whichever co-op user joined last.
+    expect(sql).toContain('MAX(ps.time_taken_to_solve)');
+    expect(sql).toContain('GROUP BY ps.gid');
+  });
+
+  it('caches repeat lookups for the same pid', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 30, median_ms: 100000}]});
+    await getPuzzleStats('p5');
+    await getPuzzleStats('p5');
+    expect(pool.query).toHaveBeenCalledTimes(1);
+  });
+
+  it('invalidates the cache for a pid when a new solve is recorded', async () => {
+    // Prime: cache pid="p6" stats
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 30, median_ms: 100000}]});
+    await getPuzzleStats('p6');
+    expect(pool.query).toHaveBeenCalledTimes(1);
+
+    // recordSolve flow: isAlreadySolvedByUser=0, then txn writes
+    pool.query.mockResolvedValueOnce({rows: [{count: 0}]});
+    mockClient.query
+      .mockResolvedValueOnce({rows: []}) // BEGIN
+      .mockResolvedValueOnce({rows: []}) // SELECT FOR UPDATE
+      .mockResolvedValueOnce({rows: [{count: 0}]}) // first-solve COUNT
+      .mockResolvedValueOnce({rows: [], rowCount: 1}) // INSERT
+      .mockResolvedValueOnce({rows: []}) // UPDATE times_solved
+      .mockResolvedValueOnce({rows: []}); // COMMIT
+    await recordSolve('p6', 'g6', 300, 'user-6');
+
+    // Cache should have been invalidated; the next stats call hits the DB again.
+    pool.query.mockResolvedValueOnce({rows: [{sample_count: 31, median_ms: 99000}]});
+    const fresh = await getPuzzleStats('p6');
+    expect(fresh).toEqual({sampleCount: 31, medianMs: 99000});
   });
 });

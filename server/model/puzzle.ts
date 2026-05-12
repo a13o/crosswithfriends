@@ -42,6 +42,19 @@ export function clearPuzzleListCache(): void {
   puzzleListCache.clear();
 }
 
+// ---- Puzzle stats cache ----
+// Median solve time moves glacially; aggressive caching is safe and cuts repeat queries on
+// popular puzzles to a single DB hit per TTL window. Keyed by pid.
+const puzzleStatsCache = new TTLCache<PuzzleStats>({
+  ttlMs: 5 * 60 * 1000,
+  maxSize: 5_000,
+  sweepIntervalMs: 10 * 60 * 1000,
+});
+
+export function clearPuzzleStatsCache(): void {
+  puzzleStatsCache.clear();
+}
+
 export async function getPuzzle(pid: string): Promise<PuzzleJson | null> {
   const {rows} = await pool.query(
     `
@@ -424,6 +437,9 @@ export async function recordSolve(
       await client.query(`UPDATE puzzles SET times_solved = times_solved + 1 WHERE pid = $1`, [pid]);
     }
     await client.query('COMMIT');
+    if (insertResult.rowCount === 1) {
+      puzzleStatsCache.delete(pid);
+    }
   } catch (e) {
     await client.query('ROLLBACK');
     console.error(`[recordSolve] failed for pid=${pid} gid=${gid}:`, e);
@@ -438,4 +454,56 @@ export async function getPuzzleInfo(pid: string) {
   if (!puzzle) return null;
   const {info = {}} = puzzle;
   return info;
+}
+
+// Solves longer than this are treated as "started a game, came back days later" rather than
+// real attempts. Two hours covers slow Sunday solvers without letting overnight idles skew the
+// median.
+export const PUZZLE_STATS_TIME_CAP_MS = 2 * 60 * 60 * 1000;
+
+// Hide the median until we have a stable sample. Below this it's too noisy to be useful as a
+// difficulty signal.
+export const PUZZLE_STATS_MIN_SAMPLES = 25;
+
+export type PuzzleStats = {
+  sampleCount: number;
+  medianMs: number | null;
+};
+
+export async function getPuzzleStats(pid: string): Promise<PuzzleStats> {
+  return puzzleStatsCache.getOrFetch(pid, async () => {
+    // Aggregate to one row per gid first: a co-op game has one puzzle_solves row per
+    // authenticated user, and counting each as a separate sample would weight the
+    // median toward larger teams. MAX(time) per gid picks the longest-present user's
+    // clock — closest to total game duration, since each user's clock starts when
+    // they join. MIN would bias downward toward the latest joiner.
+    // We do not exclude reveal-assisted solves: that would require joining game_events,
+    // whose history is deleted by the archival job once a game is solved. Filtering
+    // there would drift over time as old games get cleaned up. The median is robust
+    // enough to typical reveal usage at this sample threshold; a future revision can
+    // persist a durable per-solve "had_reveals" flag.
+    const {rows} = await pool.query(
+      `WITH game_times AS (
+         SELECT ps.gid, MAX(ps.time_taken_to_solve) AS time_ms
+         FROM puzzle_solves ps
+         WHERE ps.pid = $1
+           AND ps.time_taken_to_solve > 0
+           AND ps.time_taken_to_solve < $2
+         GROUP BY ps.gid
+       )
+       SELECT
+         COUNT(*)::int AS sample_count,
+         CASE WHEN COUNT(*) >= $3
+           THEN PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY time_ms)::int
+           ELSE NULL
+         END AS median_ms
+       FROM game_times`,
+      [pid, PUZZLE_STATS_TIME_CAP_MS, PUZZLE_STATS_MIN_SAMPLES]
+    );
+    const row = rows[0] || {sample_count: 0, median_ms: null};
+    return {
+      sampleCount: Number(row.sample_count) || 0,
+      medianMs: row.median_ms != null ? Number(row.median_ms) : null,
+    };
+  });
 }

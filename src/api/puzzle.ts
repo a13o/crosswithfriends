@@ -56,6 +56,21 @@ export async function fetchPuzzleInfo(pid: number): Promise<InfoJson | null> {
   }
 }
 
+export type PuzzleStats = {
+  sampleCount: number;
+  medianMs: number | null;
+};
+
+export async function fetchPuzzleStats(pid: string | number): Promise<PuzzleStats | null> {
+  try {
+    const resp = await fetch(`${SERVER_URL}/api/puzzle/${pid}/stats`);
+    if (!resp.ok) return null;
+    return resp.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function recordSolve(
   pid: string,
   gid: string,
