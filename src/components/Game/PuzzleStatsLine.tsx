@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
 import {MdAccessTime} from 'react-icons/md';
+import * as Sentry from '@sentry/react';
 import {fetchPuzzleStats, PuzzleStats} from '../../api/puzzle';
 import {formatMilliseconds} from '../Toolbar/Clock';
 import './css/PuzzleStatsLine.css';
@@ -13,9 +14,13 @@ export default function PuzzleStatsLine({pid}: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    fetchPuzzleStats(pid).then((data) => {
-      if (!cancelled) setStats(data);
-    });
+    fetchPuzzleStats(pid)
+      .then((data) => {
+        if (!cancelled) setStats(data);
+      })
+      .catch((err) => {
+        Sentry.captureException(err);
+      });
     return () => {
       cancelled = true;
     };

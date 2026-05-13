@@ -159,9 +159,13 @@ describe('listPuzzles', () => {
 
     await listPuzzles(filter, 50, 0, userId);
 
+    const sql = pool.query.mock.calls[0][0] as string;
     const params = pool.query.mock.calls[0][1] as any[];
-    // userId should be the last parameter
-    expect(params[params.length - 1]).toBe(userId);
+    // userId should be at whatever position the SQL's "uploaded_by = $N" refers to.
+    const match = sql.match(/uploaded_by = \$(\d+)/);
+    expect(match).not.toBeNull();
+    const userIdParamPos = Number.parseInt(match![1], 10);
+    expect(params[userIdParamPos - 1]).toBe(userId);
   });
 
   it('orders by pid_numeric DESC by default', async () => {

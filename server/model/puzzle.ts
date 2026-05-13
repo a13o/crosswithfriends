@@ -199,14 +199,22 @@ export async function listPuzzles(
       typeof rawMinRating === 'number' && rawMinRating >= 1 && rawMinRating <= 5 ? rawMinRating : 0;
     const ratingFilterClause = minRating > 0 ? `AND r.avg IS NOT NULL AND r.avg >= ${minRating}` : '';
 
-    let orderByClause: string;
+    let orderBySpec: string;
     if (filter.sortBy === 'rating_desc') {
-      orderByClause = `ORDER BY r.weighted DESC NULLS LAST, pid_numeric DESC`;
+      orderBySpec = `r.weighted DESC NULLS LAST, pid_numeric DESC`;
     } else if (filter.sortBy === 'rating_asc') {
-      orderByClause = `ORDER BY r.weighted ASC NULLS LAST, pid_numeric DESC`;
+      orderBySpec = `r.weighted ASC NULLS LAST, pid_numeric DESC`;
     } else {
-      orderByClause = `ORDER BY pid_numeric DESC`;
+      orderBySpec = `pid_numeric DESC`;
     }
+    const orderByClause = `ORDER BY ${orderBySpec}`;
+    const windowOrderBy = `OVER (ORDER BY ${orderBySpec})`;
+
+    // Stats constants are parameterized for consistency with getPuzzleStats
+    // (and the rest of the codebase). Append them after the existing params
+    // so we don't have to renumber title/day/userId placeholders.
+    const statsTimeCapIndex = userIdParamIndex + (userId ? 1 : 0);
+    const statsMinSamplesIndex = statsTimeCapIndex + 1;
 
     // Two-stage query so the expensive median LATERAL only runs over the
     // returned page, not every matched puzzle. The rating aggregate has to
@@ -227,7 +235,11 @@ export async function listPuzzles(
           jsonb_array_length(content->'grid'->0) AS grid_cols,
           (content->>'contest')::boolean AS contest,
           r.avg AS rating_avg,
-          COALESCE(r.count, 0) AS rating_count
+          COALESCE(r.count, 0) AS rating_count,
+          -- Tag each row with its sort position so the outer query can
+          -- preserve order after the median LATERAL join. SQL doesn't
+          -- guarantee row order survives subsequent joins.
+          ROW_NUMBER() ${windowOrderBy} AS sort_idx
         FROM puzzles
         LEFT JOIN LATERAL (
           SELECT
@@ -259,7 +271,7 @@ export async function listPuzzles(
         -- MAX(time), then median over those when we have a stable sample.
         SELECT
           COUNT(*)::int AS sample_count,
-          CASE WHEN COUNT(*) >= ${PUZZLE_STATS_MIN_SAMPLES}
+          CASE WHEN COUNT(*) >= $${statsMinSamplesIndex}
             THEN PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY time_ms)::int
             ELSE NULL
           END AS median_ms
@@ -268,12 +280,21 @@ export async function listPuzzles(
           FROM puzzle_solves ps
           WHERE ps.pid = page.pid
             AND ps.time_taken_to_solve > 0
-            AND ps.time_taken_to_solve < ${PUZZLE_STATS_TIME_CAP_MS}
+            AND ps.time_taken_to_solve < $${statsTimeCapIndex}
           GROUP BY ps.gid
         ) game_times
       ) s ON true
+      ORDER BY page.sort_idx
     `,
-      [limit, offset, ...parametersForTitleAuthorFilter, ...dayParams, ...userIdParams]
+      [
+        limit,
+        offset,
+        ...parametersForTitleAuthorFilter,
+        ...dayParams,
+        ...userIdParams,
+        PUZZLE_STATS_TIME_CAP_MS,
+        PUZZLE_STATS_MIN_SAMPLES,
+      ]
     );
     const puzzles: PuzzleListRow[] = rows.map(
       (row: {
