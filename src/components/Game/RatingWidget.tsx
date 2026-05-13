@@ -95,6 +95,8 @@ export default function RatingWidget({pid}: RatingWidgetProps) {
     // without a key in pages/Game.js so the same instance is reused.
     setAggregate(null);
     setEligibilityError(null);
+    setHover(0);
+    setSubmitting(false);
     fetchPuzzleRating(pid, accessToken)
       .then((data) => {
         if (!cancelled) setAggregate(data);
