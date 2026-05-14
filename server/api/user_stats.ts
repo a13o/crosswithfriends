@@ -110,7 +110,12 @@ router.get('/:userId', async (req, res, next) => {
       }
     }
 
-    res.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=300');
+    // No stale-while-revalidate: this endpoint feeds the homepage in-progress
+    // overlay and the profile, both of which need to reflect user actions
+    // (dismiss, solve, rate) quickly. SWR=300 caused a 5-minute lag where a
+    // just-dismissed game kept showing as in-progress. 30s is a compromise
+    // between freshness and not refetching on every navigation.
+    res.set('Cache-Control', 'private, max-age=30');
     res.json({
       user: {
         displayName: user.display_name,

@@ -101,6 +101,12 @@ export async function getAuthenticatedPuzzleStatuses(userId: string): Promise<Pu
     const dfacIds = await getDfacIdsForUser(userId);
     if (dfacIds.length === 0) return {};
 
+    // The game_dismissals NOT EXISTS filter is what makes a dismissed
+    // in-progress game disappear from the homepage status overlay. Without
+    // it, the puzzle keeps showing as "started" after the user dismissed
+    // their only game for it — bool_or(solved=false) over the dismissed-but-
+    // still-counted row → still 'started'. Snapshot games still count as
+    // 'solved' even if dismissed, since the solve itself doesn't go away.
     const result = await pool.query(
       `SELECT pid, CASE WHEN bool_or(solved) THEN 'solved' ELSE 'started' END AS status
        FROM (
@@ -119,6 +125,10 @@ export async function getAuthenticatedPuzzleStatuses(userId: string): Promise<Pu
          ) ce ON true
          LEFT JOIN game_snapshots gs ON gs.gid = ug.gid
          WHERE COALESCE(ce.pid, gs.pid) IS NOT NULL
+           AND (
+             gs.gid IS NOT NULL
+             OR NOT EXISTS (SELECT 1 FROM game_dismissals gd WHERE gd.gid = ug.gid AND gd.user_id = $2)
+           )
 
          UNION ALL
 
@@ -127,7 +137,7 @@ export async function getAuthenticatedPuzzleStatuses(userId: string): Promise<Pu
          WHERE fh.dfac_id = ANY($1)
        ) combined
        GROUP BY pid`,
-      [dfacIds]
+      [dfacIds, userId]
     );
 
     const statuses: PuzzleStatusMap = {};
