@@ -210,6 +210,22 @@ describe('getAuthenticatedPuzzleStatuses', () => {
     expect(params[0]).toEqual(['dfac-1', 'dfac-2']);
   });
 
+  it('excludes dismissed in-progress games via game_dismissals NOT EXISTS', async () => {
+    pool.query.mockResolvedValueOnce({rows: [{dfac_id: 'dfac-abc'}]});
+    pool.query.mockResolvedValueOnce({rows: []});
+    await getAuthenticatedPuzzleStatuses('user-123');
+    const mainQuery = pool.query.mock.calls[1][0] as string;
+    // The query must filter out games the user dismissed; otherwise the
+    // homepage status overlay keeps showing dismissed in-progress games as
+    // "started" until the 10-min cache TTL expires.
+    expect(mainQuery).toContain('game_dismissals');
+    expect(mainQuery).toContain('gd.user_id = $2');
+    // The user_id must be passed as the second positional param so the
+    // dismissals subquery can reference it.
+    const params = pool.query.mock.calls[1][1] as any[];
+    expect(params[1]).toBe('user-123');
+  });
+
   it('uses cache on second call (no DB queries)', async () => {
     // First call: dfac_id lookup + main query
     pool.query.mockResolvedValueOnce({rows: [{dfac_id: 'dfac-abc'}]});

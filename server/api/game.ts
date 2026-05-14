@@ -7,7 +7,7 @@ import {getPuzzleSolves, invalidateInProgressCacheForUser} from '../model/puzzle
 import {getPuzzleInfo} from '../model/puzzle';
 import {verifyAccessToken} from '../auth/jwt';
 import {dismissGameForUser, undismissGameForUser} from '../model/game_dismissal';
-import {invalidateUserGamesCacheForUser} from '../model/user_games';
+import {invalidateUserGamesCacheForUser, invalidateAuthPuzzleStatusCache} from '../model/user_games';
 import {getDfacIdsForUser} from '../model/user';
 
 const router = express.Router();
@@ -147,8 +147,12 @@ router.post<{gid: string}>('/:gid/dismiss', async (req, res, next) => {
 
     // Per-user dismissal — only hides the game for this user
     await dismissGameForUser(payload.userId, gid);
-    // Invalidate caches so dismissed game disappears immediately
+    // Invalidate caches so dismissed game disappears immediately. The
+    // authPuzzleStatusCache feeds the homepage's "started" overlay; without
+    // this invalidation the dismissed game keeps showing as in-progress on
+    // the homepage until the 10-min TTL expires.
     invalidateInProgressCacheForUser(payload.userId);
+    invalidateAuthPuzzleStatusCache(payload.userId);
     const dfacIds = await getDfacIdsForUser(payload.userId);
     for (const dfacId of dfacIds) invalidateUserGamesCacheForUser(dfacId);
     res.sendStatus(204);
@@ -188,6 +192,7 @@ router.post<{gid: string}>('/:gid/undismiss', async (req, res, next) => {
 
     await undismissGameForUser(payload.userId, gid);
     invalidateInProgressCacheForUser(payload.userId);
+    invalidateAuthPuzzleStatusCache(payload.userId);
     const dfacIds = await getDfacIdsForUser(payload.userId);
     for (const dfacId of dfacIds) invalidateUserGamesCacheForUser(dfacId);
     res.sendStatus(204);
