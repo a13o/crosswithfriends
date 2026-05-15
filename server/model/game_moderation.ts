@@ -13,7 +13,6 @@ export type GameCreator = {userId?: string; dfacId?: string};
 type ModerationState = {
   banned: {userIds: Set<string>; dfacIds: Set<string>};
   locked: boolean;
-  lockedAt: Date | null;
   owner: GameCreator | null;
 };
 const moderationCache = new TTLCache<ModerationState>({ttlMs: 5 * 60_000, maxSize: 10_000});
@@ -32,7 +31,7 @@ async function loadModerationState(gid: string): Promise<ModerationState> {
       `SELECT identity, identity_type FROM game_bans WHERE gid = $1`,
       [gid]
     ),
-    pool.query<{locked_at: Date}>(`SELECT locked_at FROM game_locks WHERE gid = $1`, [gid]),
+    pool.query<{gid: string}>(`SELECT gid FROM game_locks WHERE gid = $1`, [gid]),
     pool.query<{event_payload: any}>(
       `SELECT event_payload FROM game_events WHERE gid = $1 AND event_type = 'create' ORDER BY ts ASC LIMIT 1`,
       [gid]
@@ -52,13 +51,7 @@ async function loadModerationState(gid: string): Promise<ModerationState> {
     if (creatorPayload.dfacId) owner.dfacId = creatorPayload.dfacId;
     if (Object.keys(owner).length === 0) owner = null;
   }
-  const lockRow = locks.rows[0];
-  return {
-    banned: {userIds, dfacIds},
-    locked: !!lockRow,
-    lockedAt: lockRow?.locked_at ?? null,
-    owner,
-  };
+  return {banned: {userIds, dfacIds}, locked: locks.rows.length > 0, owner};
 }
 
 async function getModerationState(gid: string): Promise<ModerationState> {
@@ -84,27 +77,26 @@ export async function isGameLocked(gid: string): Promise<boolean> {
   return state.locked;
 }
 
-// Pre-lock participants get an owner-equivalent bypass on the lock gate
+// Prior participants get an owner-equivalent bypass on the lock gate
 // so they survive transient reconnects: the moderation contract is
 // "lock blocks new joins; existing players keep playing". Without this,
 // any mobile/flaky reconnect would re-issue join_game on a locked game
 // and the client would treat the rejection as terminal.
 //
-// We define "participant before lock" as having any persisted event for
-// this gid before locked_at. The very first thing every client does on
-// join is emit updateDisplayName, which is persisted and indexed on
-// (gid, uid), so this query is cheap on a hot index.
-export async function wasParticipantBeforeLock(
-  gid: string,
-  identity: Identity,
-  lockedAt: Date
-): Promise<boolean> {
+// We define "participant" as having any persisted event for this gid.
+// We deliberately do NOT compare to locked_at: game_events.ts is the
+// client-supplied event.timestamp (client clock), while locked_at is
+// server NOW(). Even small clock skew (machine slightly ahead of the
+// server) would push a legitimate pre-lock event's ts past locked_at
+// and the bypass would fail. Lock is moderation, not security — being
+// permissive here doesn't materially weaken anything, and it eliminates
+// a confusing "I can play but refresh kicks me out" failure mode.
+export async function wasParticipantOfGame(gid: string, identity: Identity): Promise<boolean> {
   if (!identity.userId && !identity.dfacId) return false;
   if (identity.dfacId) {
-    const r = await pool.query(`SELECT 1 FROM game_events WHERE gid = $1 AND uid = $2 AND ts < $3 LIMIT 1`, [
+    const r = await pool.query(`SELECT 1 FROM game_events WHERE gid = $1 AND uid = $2 LIMIT 1`, [
       gid,
       identity.dfacId,
-      lockedAt,
     ]);
     if (r.rows.length > 0) return true;
   }
@@ -115,22 +107,13 @@ export async function wasParticipantBeforeLock(
     const r = await pool.query(
       `SELECT 1 FROM game_events
        WHERE gid = $1
-         AND ts < $2
-         AND (event_payload->>'verifiedUserId') = $3
+         AND (event_payload->>'verifiedUserId') = $2
        LIMIT 1`,
-      [gid, lockedAt, identity.userId]
+      [gid, identity.userId]
     );
     if (r.rows.length > 0) return true;
   }
   return false;
-}
-
-// Public accessor for the lock timestamp. Returns null if the game is
-// unlocked. Used by the join gate to decide whether to fall back to a
-// participation check.
-export async function getLockedAt(gid: string): Promise<Date | null> {
-  const state = await getModerationState(gid);
-  return state.lockedAt;
 }
 
 // Public list of kicked dfac_ids for a gid — used client-side to grey out

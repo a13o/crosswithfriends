@@ -8,11 +8,10 @@ import {addRoomEvent, getRoomEvents} from './model/room';
 import {verifyAccessToken} from './auth/jwt';
 import {
   getGameOwner,
-  getLockedAt,
   isGameLocked,
   isIdentityBanned,
   isOwner,
-  wasParticipantBeforeLock,
+  wasParticipantOfGame,
 } from './model/game_moderation';
 import {getDfacIdsForUser} from './model/user';
 
@@ -93,15 +92,13 @@ class SocketManager {
             const dfacIds = identity.userId ? await getDfacIdsForUser(identity.userId) : [];
             const isCallerOwner = isOwner(owner, {userId: identity.userId, dfacIds});
             if (!isCallerOwner) {
-              // Pre-lock participants get through too — the lock contract is
+              // Prior participants get through too — the lock contract is
               // "block new joins, existing players keep playing". Without
               // this, a transient socket reconnect would re-issue join_game
               // and the client treats the {error: 'locked'} as terminal,
-              // effectively ejecting everyone on flaky networks.
-              const lockedAt = await getLockedAt(gid);
-              const wasParticipant = lockedAt
-                ? await wasParticipantBeforeLock(gid, identity, lockedAt)
-                : false;
+              // effectively ejecting everyone on flaky networks (and any
+              // page refresh).
+              const wasParticipant = await wasParticipantOfGame(gid, identity);
               if (!wasParticipant) {
                 if (typeof ack === 'function') ack({error: 'locked'});
                 return;
