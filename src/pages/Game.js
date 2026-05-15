@@ -43,6 +43,7 @@ class Game extends Component {
       savingReplay: false,
       connectionFailed: false,
       kickedDfacIds: [],
+      isOwnerFromServer: false,
     };
     this.initializeUser();
     window.addEventListener('resize', () => {
@@ -200,11 +201,15 @@ class Game extends Component {
       gameNotFound: false,
       moderationError: undefined,
       kickedDfacIds: [],
+      isOwnerFromServer: false,
     });
-    // Seed the kicked-id list from the server. The socket 'kicked' broadcast
-    // covers kicks that happen while we're connected; this covers kicks that
-    // happened before we joined (or before a refresh).
-    this.fetchKickedDfacIds(this.state.gid);
+    // Seed kicked-id list + owner status from the server. The socket
+    // 'kicked' broadcast covers kicks that happen while we're connected;
+    // the fetch covers kicks that happened before we joined (or before a
+    // refresh). isOwner is server-resolved to handle the case where the
+    // owner's creator.dfacId is linked to the authed user but doesn't
+    // match the local dfac id (different device, same account).
+    this.fetchModerationState(this.state.gid);
     if (this._connectionTimer) clearTimeout(this._connectionTimer);
     this._connectionTimer = setTimeout(() => {
       if (!this.historyWrapper || !this.historyWrapper.ready) {
@@ -220,11 +225,15 @@ class Game extends Component {
     this.maybeUndismiss();
   }
 
-  fetchKickedDfacIds = async (gid) => {
+  fetchModerationState = async (gid) => {
     try {
-      const state = await fetchGameModeration(gid);
+      const accessToken = this.context?.accessToken;
+      const state = await fetchGameModeration(gid, accessToken);
       if (!state || this.state.gid !== gid) return;
-      this.setState({kickedDfacIds: state.kickedDfacIds || []});
+      this.setState({
+        kickedDfacIds: state.kickedDfacIds || [],
+        isOwnerFromServer: !!state.isOwner,
+      });
     } catch (e) {
       Sentry.captureException(e);
     }
@@ -252,6 +261,13 @@ class Game extends Component {
     }
     if (!this._undismissed) {
       this.maybeUndismiss();
+    }
+    // Re-fetch moderation when the user signs in/out mid-game so the
+    // server-resolved isOwner reflects the new token.
+    const token = this.context?.accessToken || null;
+    if (this._lastModerationToken !== token && this.state.gid) {
+      this._lastModerationToken = token;
+      this.fetchModerationState(this.state.gid);
     }
   }
 
@@ -483,6 +499,7 @@ class Game extends Component {
         gid={this.state.gid}
         users={this.game.users}
         kickedDfacIds={this.state.kickedDfacIds}
+        isOwnerFromServer={this.state.isOwnerFromServer}
         id={id}
         myColor={color}
         onChat={this.handleChat}

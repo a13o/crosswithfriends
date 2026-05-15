@@ -75,9 +75,15 @@ class SocketManager {
             return;
           }
           if (await isGameLocked(gid)) {
+            // Owner bypass only trusts the authenticated identity: the dfac
+            // id from the socket handshake is client-supplied and the owner's
+            // dfac id is visible to every player via the create event and
+            // /moderation.owner. Trusting it here would let any client spoof
+            // ownership and walk past the lock. lock/unlock require auth, so
+            // every lockable game has an authenticated owner — the linked
+            // dfac ids from the token are sufficient.
             const owner = await getGameOwner(gid);
             const dfacIds = identity.userId ? await getDfacIdsForUser(identity.userId) : [];
-            if (identity.dfacId && !dfacIds.includes(identity.dfacId)) dfacIds.push(identity.dfacId);
             if (!isOwner(owner, {userId: identity.userId, dfacIds})) {
               if (typeof ack === 'function') ack({error: 'locked'});
               return;

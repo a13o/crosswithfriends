@@ -38,6 +38,11 @@ export default class Chat extends Component {
   }
 
   get isOwner() {
+    // Server-resolved when the user is signed in (covers the cross-device
+    // case where the local dfac_id differs from creator.dfacId but the
+    // creator dfac is linked to the authed account). Falls back to local
+    // identity comparison for the same-device guest case.
+    if (this.props.isOwnerFromServer) return true;
     const creator = this.props.game?.creator;
     if (!creator) return false;
     const userId = this.context?.user?.id;

@@ -80,10 +80,20 @@ export interface GameModerationState {
   locked: boolean;
   owner: {userId?: string; dfacId?: string} | null;
   kickedDfacIds: string[];
+  // Server-resolved against the caller's bearer token (false for guests).
+  // The client can't compute this itself for the cross-device case where
+  // a user created the game as a guest on another device and the dfac id
+  // in the create event is one of their linked-but-not-local ids.
+  isOwner: boolean;
 }
 
-export async function fetchGameModeration(gid: string): Promise<GameModerationState | null> {
-  const resp = await fetch(`${SERVER_URL}/api/game/${gid}/moderation`);
+export async function fetchGameModeration(
+  gid: string,
+  accessToken?: string | null
+): Promise<GameModerationState | null> {
+  const headers: Record<string, string> = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const resp = await fetch(`${SERVER_URL}/api/game/${gid}/moderation`, {headers});
   if (!resp.ok) return null;
   return resp.json();
 }

@@ -250,7 +250,24 @@ router.get<{gid: string}>('/:gid/moderation', async (req, res, next) => {
       getGameOwner(gid),
       getKickedDfacIds(gid),
     ]);
-    res.json({locked, owner, kickedDfacIds});
+    // Resolve isOwner server-side when the caller is authenticated. The
+    // client-side equivalent only knows the local dfac_id, which misses the
+    // cross-device case: user creates as guest on device A (linking that
+    // dfac_id to their account when they sign in), then opens the same game
+    // on device B with a different dfac_id. The server tracks all dfac_ids
+    // linked to the user, so it can answer "are you the owner?" correctly
+    // where the client cannot. Mirrors what the moderation HTTP endpoints
+    // actually authorize against.
+    let isOwnerForCaller = false;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const payload = verifyAccessToken(authHeader.slice(7));
+      if (payload) {
+        const dfacIds = await getDfacIdsForUser(payload.userId);
+        isOwnerForCaller = isOwner(owner, {userId: payload.userId, dfacIds});
+      }
+    }
+    res.json({locked, owner, kickedDfacIds, isOwner: isOwnerForCaller});
   } catch (e) {
     next(e);
   }
