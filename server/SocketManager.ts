@@ -138,6 +138,16 @@ class SocketManager {
             if (typeof ack === 'function') ack({error: 'invalid gid'});
             return;
           }
+          // Require room membership so banned/locked clients can't read
+          // game history by calling this directly after a rejected
+          // join_game. join_game is what places the socket in the room
+          // (and is what enforces ban/lock), so this gate inherits the
+          // same checks for free. Mirrors the room-membership gate on
+          // game_event writes.
+          if (!socket.rooms.has(`game-${gid}`)) {
+            if (typeof ack === 'function') ack({error: 'not in game'});
+            return;
+          }
           const events = await getGameEvents(gid);
           if (typeof ack === 'function') ack(events);
         } catch (err) {

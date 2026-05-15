@@ -411,6 +411,21 @@ describe('SocketManager', () => {
       expect(pool.query).not.toHaveBeenCalled();
     });
 
+    it('rejects history sync from sockets that never joined the room', async () => {
+      const {io, socketHandlers} = createMockIo();
+      const sm = new SocketManager(io);
+      sm.listen();
+      // Without the room-membership gate, a client rejected by join_game
+      // (banned/locked) could still call this directly and read game/chat
+      // history. Use a gid that isn't in the pre-populated room set.
+
+      const ack = jest.fn();
+      await socketHandlers['sync_all_game_events']('unjoined-gid', ack);
+
+      expect(ack).toHaveBeenCalledWith({error: 'not in game'});
+      expect(pool.query).not.toHaveBeenCalled();
+    });
+
     it('catches DB errors and reports to Sentry', async () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       const dbError = new Error('query timeout');
