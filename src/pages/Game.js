@@ -20,7 +20,7 @@ import getLocalId from '../localAuth';
 import {recordSolve} from '../api/puzzle.ts';
 import AuthContext from '../lib/AuthContext';
 import {SERVER_URL} from '../api/constants';
-import {undismissGame} from '../api/create_game.ts';
+import {undismissGame, fetchGameModeration} from '../api/create_game.ts';
 
 import nameGenerator from '../lib/nameGenerator';
 
@@ -42,6 +42,7 @@ class Game extends Component {
       replayRetained: null, // null = no snapshot yet, false = snapshot exists but not retained, true = retained
       savingReplay: false,
       connectionFailed: false,
+      kickedDfacIds: [],
     };
     this.initializeUser();
     window.addEventListener('resize', () => {
@@ -161,6 +162,14 @@ class Game extends Component {
         // but the room broadcasts still hit us until we disconnect.
         if (this.gameModel.forceDisconnect) this.gameModel.forceDisconnect();
         this.setState({moderationError: 'kicked'});
+      } else if (msg.dfac_id) {
+        // Track for the presence-list filter — kicked players are hidden
+        // unless they left activity behind, in which case they render as
+        // greyed out for attribution. See Chat.renderUsersPresent.
+        this.setState((prev) => {
+          if (prev.kickedDfacIds.includes(msg.dfac_id)) return null;
+          return {kickedDfacIds: [...prev.kickedDfacIds, msg.dfac_id]};
+        });
       }
     });
     this.gameModel.on('joinRejected', (reason) => {
@@ -186,7 +195,16 @@ class Game extends Component {
     // Also clear any moderation blocker carried over from a previous gid —
     // navigating to a fresh game in the same SPA session shouldn't show
     // "you were removed" once we successfully connect to the new one.
-    this.setState({connectionFailed: false, gameNotFound: false, moderationError: undefined});
+    this.setState({
+      connectionFailed: false,
+      gameNotFound: false,
+      moderationError: undefined,
+      kickedDfacIds: [],
+    });
+    // Seed the kicked-id list from the server. The socket 'kicked' broadcast
+    // covers kicks that happen while we're connected; this covers kicks that
+    // happened before we joined (or before a refresh).
+    this.fetchKickedDfacIds(this.state.gid);
     if (this._connectionTimer) clearTimeout(this._connectionTimer);
     this._connectionTimer = setTimeout(() => {
       if (!this.historyWrapper || !this.historyWrapper.ready) {
@@ -201,6 +219,16 @@ class Game extends Component {
     this.initializeGame();
     this.maybeUndismiss();
   }
+
+  fetchKickedDfacIds = async (gid) => {
+    try {
+      const state = await fetchGameModeration(gid);
+      if (!state || this.state.gid !== gid) return;
+      this.setState({kickedDfacIds: state.kickedDfacIds || []});
+    } catch (e) {
+      Sentry.captureException(e);
+    }
+  };
 
   maybeUndismiss() {
     const accessToken = this.context?.accessToken;
@@ -454,6 +482,7 @@ class Game extends Component {
         game={this.game}
         gid={this.state.gid}
         users={this.game.users}
+        kickedDfacIds={this.state.kickedDfacIds}
         id={id}
         myColor={color}
         onChat={this.handleChat}

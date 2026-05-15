@@ -12,6 +12,7 @@ import {getDfacIdsForUser} from '../model/user';
 import {
   addGameBan,
   getGameOwner,
+  getKickedDfacIds,
   isGameLocked,
   isOwner,
   lockGame,
@@ -244,8 +245,12 @@ router.post<{gid: string}>('/:gid/undismiss', async (req, res, next) => {
 router.get<{gid: string}>('/:gid/moderation', async (req, res, next) => {
   try {
     const {gid} = req.params;
-    const [locked, owner] = await Promise.all([isGameLocked(gid), getGameOwner(gid)]);
-    res.json({locked, owner});
+    const [locked, owner, kickedDfacIds] = await Promise.all([
+      isGameLocked(gid),
+      getGameOwner(gid),
+      getKickedDfacIds(gid),
+    ]);
+    res.json({locked, owner, kickedDfacIds});
   } catch (e) {
     next(e);
   }

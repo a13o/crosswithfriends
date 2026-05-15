@@ -77,6 +77,15 @@ export async function isGameLocked(gid: string): Promise<boolean> {
   return state.locked;
 }
 
+// Public list of kicked dfac_ids for a gid — used client-side to grey out
+// kicked players who left grid/chat history behind. User-id bans are kept
+// private since they identify accounts; dfac_ids are already broadcast on
+// kick and visible to every client in the room.
+export async function getKickedDfacIds(gid: string): Promise<string[]> {
+  const state = await getModerationState(gid);
+  return Array.from(state.banned.dfacIds);
+}
+
 // Owner identity is stamped onto the create event's params.creator at game
 // creation time. Games created before this feature have no creator → no
 // one can moderate them (returns null).

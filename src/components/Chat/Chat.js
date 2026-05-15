@@ -287,15 +287,15 @@ export default class Chat extends Component {
     );
   }
 
-  static renderUserPresent(id, displayName, color, kickHandler) {
-    const style = color && {
-      color,
-    };
+  static renderUserPresent(id, displayName, color, kickHandler, kicked) {
+    // Kicked users keep their entry for attribution but render greyed out
+    // with no live dot and no kick button (already gone).
+    const style = kicked ? {opacity: 0.45, textDecoration: 'line-through'} : color && {color};
     return (
-      <span key={id} style={style}>
-        <span className="dot">{'\u25CF'}</span>
+      <span key={id} style={style} title={kicked ? `${displayName} (kicked)` : undefined}>
+        {!kicked && <span className="dot">{'\u25CF'}</span>}
         {displayName}
-        {kickHandler && (
+        {kickHandler && !kicked && (
           <button
             type="button"
             className="chat--user--kick-btn"
@@ -303,26 +303,50 @@ export default class Chat extends Component {
             onClick={kickHandler}
             title={`Kick ${displayName}`}
           >
-            \u00D7
+            {'\u00D7'}
           </button>
         )}{' '}
       </span>
     );
   }
 
+  // Kicked players are hidden from the presence list unless they left grid
+  // or chat activity behind \u2014 in which case we keep them visible (greyed
+  // out) so other players can still see who placed each letter / sent each
+  // chat message.
+  hasUserActivity(id) {
+    const messages = this.props.data?.messages || [];
+    if (messages.some((m) => m.senderId === id)) return true;
+    const grid = this.props.game?.grid;
+    if (Array.isArray(grid)) {
+      for (const row of grid) {
+        if (!Array.isArray(row)) continue;
+        for (const cell of row) {
+          if (cell && cell.user_id === id) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   renderUsersPresent(users) {
     if (this.props.hideChatBar) return null;
     const showKick = this.canModerate;
+    const kickedSet = new Set(this.props.kickedDfacIds || []);
     return (
       <div className="chat--users--present">
-        {Object.keys(users).map((id) =>
-          Chat.renderUserPresent(
-            id,
-            users[id].displayName,
-            users[id].color,
-            showKick && id !== this.props.id ? this.handleKickClick : null
-          )
-        )}
+        {Object.keys(users)
+          .filter((id) => !kickedSet.has(id) || this.hasUserActivity(id))
+          .map((id) => {
+            const kicked = kickedSet.has(id);
+            return Chat.renderUserPresent(
+              id,
+              users[id].displayName,
+              users[id].color,
+              showKick && !kicked && id !== this.props.id ? this.handleKickClick : null,
+              kicked
+            );
+          })}
       </div>
     );
   }

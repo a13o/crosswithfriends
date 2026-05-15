@@ -79,6 +79,7 @@ export async function unlockGame(gid: string, accessToken: string): Promise<bool
 export interface GameModerationState {
   locked: boolean;
   owner: {userId?: string; dfacId?: string} | null;
+  kickedDfacIds: string[];
 }
 
 export async function fetchGameModeration(gid: string): Promise<GameModerationState | null> {
