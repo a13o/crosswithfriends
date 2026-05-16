@@ -68,20 +68,17 @@ class SocketManager {
             if (typeof ack === 'function') ack({error: 'invalid gid'});
             return;
           }
-          // Require an identity (dfac_id from the handshake or a verified
-          // user id from the bearer). Without this, isIdentityBanned returns
-          // false vacuously for sockets that omit both, so a kicked guest
-          // could simply clear localStorage and reconnect to bypass the ban.
-          // Every real client sends a dfac_id (getLocalId always generates
-          // one), so this only closes the exploit path.
-          if (!socket.data.dfacId && !socket.data.authUser?.userId) {
-            if (typeof ack === 'function') ack({error: 'no identity'});
-            return;
-          }
           // Moderation gates: identity-based ban first, then lock (with an
           // owner bypass so the owner can always rejoin even on a locked
           // game). Both reads are cached per-gid; misses are still fast PK
           // lookups.
+          // We intentionally don't require an identity on the handshake:
+          // dfacId-in-handshake shipped in this PR, so stale tabs from
+          // before would be locked out of every game otherwise. Bans for
+          // unauthed guests are best-effort regardless — a guest can clear
+          // localStorage and reappear under a fresh dfacId either way.
+          // For authed targets we additionally ban the linked user_id in
+          // /kick, which is the layer that's actually robust.
           const identity = {
             userId: socket.data.authUser?.userId,
             dfacId: socket.data.dfacId,

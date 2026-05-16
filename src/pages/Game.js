@@ -154,6 +154,12 @@ class Game extends Component {
     // joinRejected fires when the server refused our join because we're
     // banned or the game is locked.
     this.gameModel.on('kicked', (msg) => {
+      // initializeGame() runs on every gid change without explicitly
+      // tearing down the prior gameModel's listeners, so a 'kicked' event
+      // from the old game can fire after we've already navigated to a
+      // new one. Without this gid check, we'd forceDisconnect the new
+      // session and show the blocker for a kick that wasn't ours.
+      if (msg.gid !== this.state.gid) return;
       const myDfacId = this.userId;
       const myUserId = this.context?.user?.id;
       const isTarget = (msg.dfac_id && msg.dfac_id === myDfacId) || (msg.user_id && msg.user_id === myUserId);
@@ -177,6 +183,13 @@ class Game extends Component {
       // 'banned' or 'locked' — both render the same blocker screen, just
       // with different copy.
       this.setState({moderationError: reason});
+    });
+    this.gameModel.on('unkicked', (msg) => {
+      if (msg.gid !== this.state.gid) return;
+      if (!msg.dfac_id) return;
+      this.setState((prev) => ({
+        kickedDfacIds: prev.kickedDfacIds.filter((id) => id !== msg.dfac_id),
+      }));
     });
 
     // Defer updateDisplayName until after we confirm the game has a create

@@ -417,6 +417,18 @@ router.post<{gid: string}, {} | {error: string}, KickRequest>('/:gid/unkick', as
 
     await removeGameBan(gid, {dfacId: target.dfac_id, userId: resolvedUserId});
 
+    // Mirror /kick's broadcast so other clients can update their local
+    // kickedDfacIds (un-grey the presence entry, re-allow as a real player)
+    // without a refresh.
+    const io = getSocketIo();
+    if (io) {
+      io.to(`game-${gid}`).emit('unkicked', {
+        gid,
+        dfac_id: target.dfac_id,
+        user_id: resolvedUserId,
+      });
+    }
+
     res.sendStatus(204);
   } catch (e) {
     next(e);

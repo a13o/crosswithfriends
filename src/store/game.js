@@ -52,6 +52,16 @@ function saveOfflineQueue(gid, queue) {
 // a wrapper class that models Game
 
 const CURRENT_VERSION = 1.0;
+
+// Errors from join_game that should permanently fail the connection (the
+// page shows a blocker screen and doesn't retry). Anything else — most
+// notably the server's catch-all 'internal error' — is transient and should
+// fall through so the socket reconnect machinery can retry.
+const TERMINAL_JOIN_ERRORS = new Set(['banned', 'locked']);
+function isTerminalJoinError(error) {
+  return TERMINAL_JOIN_ERRORS.has(error);
+}
+
 export default class Game extends EventEmitter {
   constructor(path) {
     super();
@@ -74,13 +84,20 @@ export default class Game extends EventEmitter {
     this.socket = socket;
     const joinAck = await emitAsync(socket, 'join_game', this.gid);
     if (joinAck && joinAck.error) {
-      // Server refused (banned/locked). Mark this connection terminal and
-      // bail before subscribing — otherwise attach() would still call
-      // sync_all_game_events and the client could load full game history
-      // for a game they're not allowed in.
-      this.joinRejected = joinAck.error;
-      this.emit('joinRejected', joinAck.error);
-      return;
+      if (isTerminalJoinError(joinAck.error)) {
+        // Server refused (banned/locked). Mark this connection terminal and
+        // bail before subscribing — otherwise attach() would still call
+        // sync_all_game_events and the client could load full game history
+        // for a game they're not allowed in.
+        this.joinRejected = joinAck.error;
+        this.emit('joinRejected', joinAck.error);
+        return;
+      }
+      // Transient (e.g. 'internal error') — log and continue. The socket's
+      // own reconnect handler will re-issue join_game when the connection
+      // re-establishes; treating these as terminal would lock the user out
+      // until a full refresh.
+      console.warn('join_game returned non-terminal error:', joinAck.error);
     }
 
     socket.on('disconnect', () => {
@@ -96,14 +113,25 @@ export default class Game extends EventEmitter {
       }
     });
 
+    // And 'unkicked' when a kick is reversed, so other tabs can drop the
+    // dfac_id from their local kicked list without a full reload.
+    socket.on('unkicked', (msg) => {
+      if (msg && msg.gid === this.gid) {
+        this.emit('unkicked', msg);
+      }
+    });
+
     // handle future reconnects
     socket.on('connect', async () => {
       console.log('reconnecting...');
       const ack = await emitAsync(socket, 'join_game', this.gid);
       if (ack && ack.error) {
-        this.joinRejected = ack.error;
-        this.emit('joinRejected', ack.error);
-        return;
+        if (isTerminalJoinError(ack.error)) {
+          this.joinRejected = ack.error;
+          this.emit('joinRejected', ack.error);
+          return;
+        }
+        console.warn('join_game on reconnect returned non-terminal error:', ack.error);
       }
       console.log('reconnected...');
       this.syncState = null;
