@@ -32,7 +32,9 @@ function mockState({
 }): void {
   pool.query.mockResolvedValueOnce({rows: bans});
   pool.query.mockResolvedValueOnce({rows: locked ? [{gid: 'g1'}] : []});
-  pool.query.mockResolvedValueOnce({rows: creator ? [{event_payload: {params: {creator}}}] : []});
+  // The moderation loader extracts event_payload->'params'->'creator' as
+  // `creator` directly in SQL, so the mocked row matches that shape.
+  pool.query.mockResolvedValueOnce({rows: creator ? [{creator}] : []});
 }
 
 describe('isIdentityBanned', () => {
@@ -85,10 +87,10 @@ describe('getGameOwner', () => {
   });
 
   it('returns null when create event has no creator field (legacy game)', async () => {
-    // create event row present, no creator key
+    // create event row present, JSON path returns NULL for missing creator.
     pool.query.mockResolvedValueOnce({rows: []});
     pool.query.mockResolvedValueOnce({rows: []});
-    pool.query.mockResolvedValueOnce({rows: [{event_payload: {params: {pid: 'p1'}}}]});
+    pool.query.mockResolvedValueOnce({rows: [{creator: null}]});
     expect(await getGameOwner('g1')).toBeNull();
   });
 });

@@ -17,10 +17,10 @@ CREATE TABLE IF NOT EXISTS game_bans (
   PRIMARY KEY (gid, identity, identity_type)
 );
 
--- Bans are typically queried "is this identity banned for this gid?" and
--- "list bans for this gid". The PK covers the first; this index covers
--- the second.
-CREATE INDEX IF NOT EXISTS game_bans_gid_idx ON game_bans (gid);
+-- Both "is this identity banned for this gid?" and "list bans for this
+-- gid" are covered by the PK index on (gid, identity, identity_type) —
+-- Postgres uses the leading column for gid-only filters. No standalone
+-- gid index needed.
 
 ALTER TABLE public.game_bans OWNER to dfacadmin;
 GRANT ALL ON TABLE public.game_bans TO dfacadmin;

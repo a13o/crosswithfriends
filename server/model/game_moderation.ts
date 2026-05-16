@@ -32,8 +32,16 @@ async function loadModerationState(gid: string): Promise<ModerationState> {
       [gid]
     ),
     pool.query<{gid: string}>(`SELECT gid FROM game_locks WHERE gid = $1`, [gid]),
-    pool.query<{event_payload: any}>(
-      `SELECT event_payload FROM game_events WHERE gid = $1 AND event_type = 'create' ORDER BY ts ASC LIMIT 1`,
+    // Extract just the creator subtree from the create event's payload.
+    // Pulling the full event_payload would drag the whole bootstrap blob
+    // (grid + clues + solution) across the wire for every cache miss; the
+    // creator is the only field we actually use.
+    pool.query<{creator: {userId?: string; dfacId?: string} | null}>(
+      `SELECT event_payload->'params'->'creator' AS creator
+       FROM game_events
+       WHERE gid = $1 AND event_type = 'create'
+       ORDER BY ts ASC
+       LIMIT 1`,
       [gid]
     ),
   ]);
@@ -44,7 +52,7 @@ async function loadModerationState(gid: string): Promise<ModerationState> {
     else dfacIds.add(row.identity);
   }
   let owner: GameCreator | null = null;
-  const creatorPayload = creator.rows[0]?.event_payload?.params?.creator;
+  const creatorPayload = creator.rows[0]?.creator;
   if (creatorPayload) {
     owner = {};
     if (creatorPayload.userId) owner.userId = creatorPayload.userId;
