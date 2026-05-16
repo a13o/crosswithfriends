@@ -107,6 +107,15 @@ export default class Game extends EventEmitter {
       }
       console.log('reconnected...');
       this.syncState = null;
+      // If the initial history sync never completed (e.g. socket bounced
+      // mid-sync because the auth token resolved late and setSocketAuthToken
+      // rebuilt the handshake), do it now. Without this, the client never
+      // receives the create event and the page sits on the connection-failed
+      // timeout. Safe to call on every reconnect — syncAllGameEvents is
+      // idempotent and the game_event listener is added separately.
+      if (!this._initialSyncCompleted) {
+        await this.syncAllGameEvents();
+      }
       await this.flushOfflineQueue();
       this.emitReconnect();
     });
@@ -231,6 +240,11 @@ export default class Game extends EventEmitter {
       event = castNullsToUndefined(event);
       this.emitWSEvent(event);
     });
+    await this.syncAllGameEvents();
+  }
+
+  async syncAllGameEvents() {
+    if (!this.socket || !this.socket.connected) return;
     const response = await emitAsync(this.socket, 'sync_all_game_events', this.gid);
     // Server returns an array of events on success, or {error: ...} on failure.
     // Only process and check for gameNotFound on a valid array response.
@@ -243,6 +257,7 @@ export default class Game extends EventEmitter {
       this.emitWSEvent(event);
     });
     if (response.some((event) => event && event.type === 'create')) {
+      this._initialSyncCompleted = true;
       this.emit('gameReady');
     } else {
       this.emit('gameNotFound');
