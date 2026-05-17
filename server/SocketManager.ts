@@ -23,13 +23,14 @@ import {getDfacIdsForUser} from './model/user';
 const EPHEMERAL_EVENT_TYPES = new Set(['updateCursor', 'addPing']);
 
 // Event types that the owner can restrict to themselves via /api/game/:gid/restrictions/:action.
-// Kept as a typed map so the lookup is type-safe and the membership check
-// doubles as the cast to RestrictableAction below.
-const RESTRICTABLE_EVENT_TYPES: Record<string, RestrictableAction> = {
+// Null-prototype object so external-input lookups (event.type from the
+// socket payload) can't pick up inherited Object.prototype members like
+// `toString` and return a truthy non-action value.
+const RESTRICTABLE_EVENT_TYPES: Record<string, RestrictableAction> = Object.assign(Object.create(null), {
   check: 'check',
   reveal: 'reveal',
   reset: 'reset',
-};
+});
 
 // ============== Socket Manager ==============
 
