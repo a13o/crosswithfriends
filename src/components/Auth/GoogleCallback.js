@@ -28,18 +28,17 @@ export default function GoogleCallback() {
     (async () => {
       try {
         const user = await getMe(token);
-        if (user) {
-          await handleLoginSuccess({accessToken: token, user});
-        } else {
+        if (!user) {
           setError('Failed to retrieve user info');
+          return;
         }
-      } catch (_e) {
-        setError('Authentication failed');
-      } finally {
+        await handleLoginSuccess({accessToken: token, user});
         // Return the user to wherever they kicked off the OAuth flow from
         // (set in LoginModal.handleGoogleLogin). Falls back to '/' if it
         // wasn't set or got mangled. Only same-origin relative paths are
         // accepted so this can't be hijacked into an open-redirect.
+        // Navigation only fires on success — leaving it in `finally`
+        // unmounted the page mid-error and the user never saw why.
         let returnTo = '/';
         try {
           const stored = sessionStorage.getItem('post_login_return_to');
@@ -51,6 +50,8 @@ export default function GoogleCallback() {
           // sessionStorage unavailable
         }
         navigate(returnTo, {replace: true});
+      } catch (_e) {
+        setError('Authentication failed');
       }
     })();
   }, [location.search, handleLoginSuccess, navigate]);

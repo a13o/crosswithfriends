@@ -70,7 +70,9 @@ export default function LoginModal({open, onClose}) {
     // after the OAuth roundtrip. Without this, every Google sign-in ends
     // up at the homepage — bad UX when signing in mid-game.
     try {
-      const here = window.location.pathname + window.location.search;
+      // Include hash too so routers that use it (or in-page anchor state)
+      // survive the round-trip — pathname + search alone would strip it.
+      const here = window.location.pathname + window.location.search + window.location.hash;
       sessionStorage.setItem('post_login_return_to', here);
     } catch {
       // sessionStorage unavailable — fall back to default homepage redirect
