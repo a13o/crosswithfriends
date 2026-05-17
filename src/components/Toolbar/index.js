@@ -134,8 +134,8 @@ export default class Toolbar extends Component {
   }
 
   isRestrictedForCaller(action) {
-    const {restrictions, isOwnerFromServer} = this.props;
-    return !!restrictions && !!restrictions[action] && !isOwnerFromServer;
+    const {restrictions, isOwner} = this.props;
+    return !!restrictions && !!restrictions[action] && !isOwner;
   }
 
   renderCheckMenu() {

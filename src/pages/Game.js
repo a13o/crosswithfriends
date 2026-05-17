@@ -115,6 +115,17 @@ class Game extends Component {
       this.handleChange();
       this.handleUpdate();
     });
+    // Terminal rejection (restricted / banned / protocol error). The
+    // optimistic version of the event is still in the historyWrapper
+    // because the server never echoed it back through wsEvent. Drop it
+    // so the board doesn't keep showing a check/reveal/reset effect that
+    // no one else can see.
+    this.gameModel.on('eventRejected', ({event}) => {
+      if (!event) return;
+      this.historyWrapper.removeOptimisticEvent(event.id);
+      this.handleChange();
+      this.handleUpdate();
+    });
     this.gameModel.on('reconnect', () => {
       // Offline events were flushed by the Game model on reconnect,
       // so we can safely clear warnings and optimistic state
@@ -317,6 +328,24 @@ class Game extends Component {
     return this.historyWrapper.getSnapshot();
   }
 
+  // Unified ownership check that covers all three cases moderation gates on:
+  // - server-resolved (cross-device: same account, different dfac id)
+  // - signed-in user id matches creator.userId on the same device
+  // - guest dfac id matches creator.dfacId on the same device
+  // The Toolbar/Chat both consume this, so a guest-owner-on-same-device
+  // doesn't get their own actions gated by the restrictions UI.
+  // Safe to call from any render path that already requires
+  // historyWrapper.ready (renderGame / renderChat both gate on it).
+  get isOwner() {
+    if (this.state.isOwnerFromServer) return true;
+    const creator = this.game?.creator;
+    if (!creator) return false;
+    const userId = this.context?.user?.id;
+    if (creator.userId && userId && creator.userId === userId) return true;
+    if (creator.dfacId && this.userId && creator.dfacId === this.userId) return true;
+    return false;
+  }
+
   get unreads() {
     const lastMessage = Math.max(...(this.game.chat.messages || []).map((m) => m.timestamp));
     return lastMessage > this.state.lastReadChat;
@@ -516,7 +545,7 @@ class Game extends Component {
         focusMode={this.state.focusMode}
         onToggleFocusMode={this.handleToggleFocusMode}
         restrictions={this.state.restrictions}
-        isOwnerFromServer={this.state.isOwnerFromServer}
+        isOwner={this.isOwner}
       />
     );
   }
@@ -541,7 +570,7 @@ class Game extends Component {
         gid={this.state.gid}
         users={this.game.users}
         kickedDfacIds={this.state.kickedDfacIds}
-        isOwnerFromServer={this.state.isOwnerFromServer}
+        isOwner={this.isOwner}
         locked={this.state.locked}
         restrictions={this.state.restrictions}
         onUnkick={this.handleUnkick}

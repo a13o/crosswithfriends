@@ -43,17 +43,10 @@ export default class Chat extends Component {
   }
 
   get isOwner() {
-    // Server-resolved when the user is signed in (covers the cross-device
-    // case where the local dfac_id differs from creator.dfacId but the
-    // creator dfac is linked to the authed account). Falls back to local
-    // identity comparison for the same-device guest case.
-    if (this.props.isOwnerFromServer) return true;
-    const creator = this.props.game?.creator;
-    if (!creator) return false;
-    const userId = this.context?.user?.id;
-    if (creator.userId && userId && creator.userId === userId) return true;
-    if (creator.dfacId && this.props.id && creator.dfacId === this.props.id) return true;
-    return false;
+    // Single source of truth lives on pages/Game.js; it computes the
+    // three-case match (server-resolved, signed-in same-device, guest
+    // same-device) once so the Toolbar/Chat/OwnerControls agree.
+    return !!this.props.isOwner;
   }
 
   // Moderation endpoints require auth (the server rejects dfac-only

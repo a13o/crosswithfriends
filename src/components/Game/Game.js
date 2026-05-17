@@ -551,7 +551,7 @@ export default class Game extends Component {
         focusMode={this.props.focusMode}
         onToggleFocusMode={this.props.onToggleFocusMode}
         restrictions={this.props.restrictions}
-        isOwnerFromServer={this.props.isOwnerFromServer}
+        isOwner={!!this.props.isOwner}
       />
     );
   }
