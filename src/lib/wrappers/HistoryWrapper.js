@@ -130,6 +130,15 @@ export default class HistoryWrapper {
     this.optimisticEvents.push(event);
   }
 
+  // Drop an optimistic event that the server rejected terminally
+  // (e.g. owner restricted the action mid-click). Without this the
+  // local board keeps the optimistic effect (a flashed reveal, a
+  // check highlight) until refresh, even though it never persisted.
+  removeOptimisticEvent(id) {
+    if (!id) return;
+    this.optimisticEvents = this.optimisticEvents.filter((ev) => ev.id !== id);
+  }
+
   clearOptimisticEvents() {
     this.optimisticEvents = [];
   }

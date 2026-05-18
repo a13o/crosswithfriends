@@ -44,6 +44,8 @@ class Game extends Component {
       connectionFailed: false,
       kickedDfacIds: [],
       isOwnerFromServer: false,
+      restrictions: {check: false, reveal: false, reset: false},
+      locked: false,
     };
     this.initializeUser();
     window.addEventListener('resize', () => {
@@ -110,6 +112,17 @@ class Game extends Component {
     });
     this.gameModel.on('wsOptimisticEvent', (event) => {
       this.historyWrapper.addOptimisticEvent(event);
+      this.handleChange();
+      this.handleUpdate();
+    });
+    // Terminal rejection (restricted / banned / protocol error). The
+    // optimistic version of the event is still in the historyWrapper
+    // because the server never echoed it back through wsEvent. Drop it
+    // so the board doesn't keep showing a check/reveal/reset effect that
+    // no one else can see.
+    this.gameModel.on('eventRejected', ({event}) => {
+      if (!event) return;
+      this.historyWrapper.removeOptimisticEvent(event.id);
       this.handleChange();
       this.handleUpdate();
     });
@@ -195,6 +208,17 @@ class Game extends Component {
         kickedDfacIds: prev.kickedDfacIds.filter((id) => id !== msg.dfac_id),
       }));
     });
+    this.gameModel.on('restrictionsChanged', (msg) => {
+      if (msg.gid !== this.state.gid) return;
+      if (!msg.action) return;
+      this.setState((prev) => ({
+        restrictions: {...prev.restrictions, [msg.action]: !!msg.restricted},
+      }));
+    });
+    this.gameModel.on('lockChanged', (msg) => {
+      if (msg.gid !== this.state.gid) return;
+      this.setState({locked: !!msg.locked});
+    });
 
     // Defer updateDisplayName until after we confirm the game has a create
     // event server-side. Emitting on mount produced orphan rows in
@@ -219,6 +243,8 @@ class Game extends Component {
       moderationError: undefined,
       kickedDfacIds: [],
       isOwnerFromServer: false,
+      restrictions: {check: false, reveal: false, reset: false},
+      locked: false,
     });
     // Seed kicked-id list + owner status from the server. The socket
     // 'kicked' broadcast covers kicks that happen while we're connected;
@@ -242,6 +268,15 @@ class Game extends Component {
     this.maybeUndismiss();
   }
 
+  // Imperative refresh trigger handed to OwnerControls so a successful
+  // lock/restriction toggle re-syncs the panel even if the socket bounces
+  // or drops the lock_changed / restrictions_changed broadcast. The
+  // broadcast still handles the common path (and updates other tabs);
+  // this is just a defensive backstop for the owner's own tab.
+  handleRefreshModeration = () => {
+    if (this.state.gid) this.fetchModerationState(this.state.gid);
+  };
+
   fetchModerationState = async (gid) => {
     try {
       const accessToken = this.context?.accessToken;
@@ -250,6 +285,8 @@ class Game extends Component {
       this.setState({
         kickedDfacIds: state.kickedDfacIds || [],
         isOwnerFromServer: !!state.isOwner,
+        restrictions: state.restrictions,
+        locked: !!state.locked,
       });
     } catch (e) {
       Sentry.captureException(e);
@@ -298,6 +335,24 @@ class Game extends Component {
 
   get game() {
     return this.historyWrapper.getSnapshot();
+  }
+
+  // Unified ownership check that covers all three cases moderation gates on:
+  // - server-resolved (cross-device: same account, different dfac id)
+  // - signed-in user id matches creator.userId on the same device
+  // - guest dfac id matches creator.dfacId on the same device
+  // The Toolbar/Chat both consume this, so a guest-owner-on-same-device
+  // doesn't get their own actions gated by the restrictions UI.
+  // Safe to call from any render path that already requires
+  // historyWrapper.ready (renderGame / renderChat both gate on it).
+  get isOwner() {
+    if (this.state.isOwnerFromServer) return true;
+    const creator = this.game?.creator;
+    if (!creator) return false;
+    const userId = this.context?.user?.id;
+    if (creator.userId && userId && creator.userId === userId) return true;
+    if (creator.dfacId && this.userId && creator.dfacId === this.userId) return true;
+    return false;
   }
 
   get unreads() {
@@ -498,6 +553,8 @@ class Game extends Component {
         onPreferenceChange={this.context?.savePreference}
         focusMode={this.state.focusMode}
         onToggleFocusMode={this.handleToggleFocusMode}
+        restrictions={this.state.restrictions}
+        isOwner={this.isOwner}
       />
     );
   }
@@ -522,7 +579,10 @@ class Game extends Component {
         gid={this.state.gid}
         users={this.game.users}
         kickedDfacIds={this.state.kickedDfacIds}
-        isOwnerFromServer={this.state.isOwnerFromServer}
+        isOwner={this.isOwner}
+        locked={this.state.locked}
+        restrictions={this.state.restrictions}
+        onRefreshModeration={this.handleRefreshModeration}
         onUnkick={this.handleUnkick}
         id={id}
         myColor={color}

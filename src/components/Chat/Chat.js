@@ -3,7 +3,7 @@ import React, {Component} from 'react';
 import _ from 'lodash';
 import Linkify from 'linkify-react';
 import {Link} from 'react-router';
-import {MdClose, MdErrorOutline, MdHelpOutline} from 'react-icons/md';
+import {MdClose, MdErrorOutline, MdHelpOutline, MdLock} from 'react-icons/md';
 import {FaClone, FaCrown} from 'react-icons/fa6';
 import * as Sentry from '@sentry/react';
 import Emoji from '../common/Emoji';
@@ -17,6 +17,7 @@ import RatingWidget from '../Game/RatingWidget';
 import PuzzleStatsLine from '../Game/PuzzleStatsLine';
 import OwnerControls from './OwnerControls';
 import ConfirmDialog from '../common/ConfirmDialog';
+import InfoDialog from '../common/InfoDialog';
 import AuthContext from '../../lib/AuthContext';
 import {kickPlayer, unkickPlayer} from '../../api/create_game';
 
@@ -35,17 +36,20 @@ export default class Chat extends Component {
       username: '',
       kickTarget: null,
       unkickTarget: null,
+      showLockInfo: false,
     };
     this.chatBar = React.createRef();
     this.usernameInput = React.createRef();
   }
 
   get isOwner() {
-    // Server-resolved when the user is signed in (covers the cross-device
-    // case where the local dfac_id differs from creator.dfacId but the
-    // creator dfac is linked to the authed account). Falls back to local
-    // identity comparison for the same-device guest case.
-    if (this.props.isOwnerFromServer) return true;
+    // Prefer the unified flag computed by pages/Game.js — it covers the
+    // cross-device case (signed-in user whose local dfac doesn't match
+    // creator.dfacId but is linked to their account). Fall back to local
+    // same-device matching for callsites that don't pass the prop
+    // (Fencing.tsx, Replay.js) so owners there don't lose their kick/
+    // unkick controls and OwnerControls.
+    if (this.props.isOwner) return true;
     const creator = this.props.game?.creator;
     if (!creator) return false;
     const userId = this.context?.user?.id;
@@ -62,6 +66,14 @@ export default class Chat extends Component {
   get canModerate() {
     return this.isOwner && !!this.context?.accessToken;
   }
+
+  handleOpenLockInfo = () => {
+    this.setState({showLockInfo: true});
+  };
+
+  handleLockInfoChange = (open) => {
+    this.setState({showLockInfo: open});
+  };
 
   handleKickClick = (event) => {
     const targetDfacId = event.currentTarget.dataset.dfacId;
@@ -311,7 +323,42 @@ export default class Chat extends Component {
         )}
         {pid && <PuzzleStatsLine pid={String(pid)} />}
         {pid && <RatingWidget pid={String(pid)} />}
-        {this.isOwner && this.props.gid && <OwnerControls gid={this.props.gid} />}
+        {!this.isOwner && this.props.locked && (
+          <>
+            <button
+              type="button"
+              className="chat--lock-chip"
+              title="No new players can join. Click for details."
+              onClick={this.handleOpenLockInfo}
+            >
+              <MdLock className="chat--lock-chip-icon" aria-hidden="true" />
+              Game locked
+            </button>
+            <InfoDialog
+              open={this.state.showLockInfo}
+              onOpenChange={this.handleLockInfoChange}
+              title="This game is locked"
+              icon={<MdLock />}
+            >
+              <p>
+                The game host locked this game, so <strong>no new players can join</strong>. Anyone who tries
+                to open the game for the first time sees a &ldquo;game is locked&rdquo; message instead.
+              </p>
+              <p>
+                You and everyone else already in the game keep playing as normal. The host can unlock the game
+                at any time.
+              </p>
+            </InfoDialog>
+          </>
+        )}
+        {this.isOwner && this.props.gid && this.props.restrictions && (
+          <OwnerControls
+            gid={this.props.gid}
+            locked={!!this.props.locked}
+            restrictions={this.props.restrictions}
+            onRefreshModeration={this.props.onRefreshModeration}
+          />
+        )}
         {this.renderFencingOptions()}
       </div>
     );
