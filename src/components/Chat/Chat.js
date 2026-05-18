@@ -43,10 +43,19 @@ export default class Chat extends Component {
   }
 
   get isOwner() {
-    // Single source of truth lives on pages/Game.js; it computes the
-    // three-case match (server-resolved, signed-in same-device, guest
-    // same-device) once so the Toolbar/Chat/OwnerControls agree.
-    return !!this.props.isOwner;
+    // Prefer the unified flag computed by pages/Game.js — it covers the
+    // cross-device case (signed-in user whose local dfac doesn't match
+    // creator.dfacId but is linked to their account). Fall back to local
+    // same-device matching for callsites that don't pass the prop
+    // (Fencing.tsx, Replay.js) so owners there don't lose their kick/
+    // unkick controls and OwnerControls.
+    if (this.props.isOwner) return true;
+    const creator = this.props.game?.creator;
+    if (!creator) return false;
+    const userId = this.context?.user?.id;
+    if (creator.userId && userId && creator.userId === userId) return true;
+    if (creator.dfacId && this.props.id && creator.dfacId === this.props.id) return true;
+    return false;
   }
 
   // Moderation endpoints require auth (the server rejects dfac-only
