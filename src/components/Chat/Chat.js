@@ -351,10 +351,10 @@ export default class Chat extends Component {
             </InfoDialog>
           </>
         )}
-        {this.isOwner && this.props.gid && (
+        {this.isOwner && this.props.gid && this.props.restrictions && (
           <OwnerControls
             gid={this.props.gid}
-            locked={this.props.locked}
+            locked={!!this.props.locked}
             restrictions={this.props.restrictions}
           />
         )}
