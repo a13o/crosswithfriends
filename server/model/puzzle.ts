@@ -300,10 +300,53 @@ const puzzleValidator = Joi.object({
   contest: Joi.boolean().optional(),
 });
 
+// Some upstream .puz generators (esp. ones that did PDF→text extraction
+// of NYT/Vulture/Morning Brew puzzles) replace characters they couldn't
+// render — card suits, decorative emoji — with the literal three chars
+// "[?]". We've accumulated ~100 of these in prod from external bots
+// hitting this endpoint over the past year. Reject new uploads with
+// this marker so we don't keep collecting them, and give a clear
+// message pointing the uploader at the actual problem (their source).
+const BROKEN_PLACEHOLDER = '[?]';
+
+function findBrokenPlaceholderField(puzzle: any): string | null {
+  const info = puzzle?.info;
+  if (info && typeof info === 'object') {
+    for (const key of ['title', 'author', 'description', 'copyright', 'note']) {
+      const val = info[key];
+      if (typeof val === 'string' && val.includes(BROKEN_PLACEHOLDER)) {
+        return `info.${key}`;
+      }
+    }
+  }
+  const clues = puzzle?.clues;
+  if (clues && typeof clues === 'object') {
+    for (const direction of ['across', 'down'] as const) {
+      const arr = clues[direction];
+      if (!Array.isArray(arr)) continue;
+      for (let i = 0; i < arr.length; i += 1) {
+        const clue = arr[i];
+        if (typeof clue === 'string' && clue.includes(BROKEN_PLACEHOLDER)) {
+          return `clues.${direction}[${i}]`;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function validatePuzzle(puzzle: any) {
   const {error} = puzzleValidator.validate(puzzle);
   if (error) {
     throw new Error(error.message);
+  }
+  const brokenField = findBrokenPlaceholderField(puzzle);
+  if (brokenField) {
+    throw new Error(
+      `Invalid puzzle: ${brokenField} contains "[?]" placeholders, which usually means the source ` +
+        `pipeline stripped a card suit or decorative emoji. Try re-exporting from iPUZ, or fix the ` +
+        `source file before re-uploading.`
+    );
   }
 }
 
