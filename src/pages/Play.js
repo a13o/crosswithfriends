@@ -216,30 +216,36 @@ class Play extends Component {
     const {abandonGid} = this.state;
     if (!abandonGid) return;
     const accessToken = this.context?.accessToken;
+    const priorGames = this.state.games;
 
-    // Optimistically update UI
-    if (this.state.games) {
+    if (priorGames) {
       this.setState({
-        games: this.state.games.filter((g) => g.gid !== abandonGid),
+        games: priorGames.filter((g) => g.gid !== abandonGid),
       });
     }
 
-    if (accessToken) {
-      await dismissGame(abandonGid, accessToken);
-    } else {
-      try {
-        const guestDismissed = JSON.parse(localStorage.getItem('cwf:guest_dismissed_games') || '[]');
-        if (!guestDismissed.includes(abandonGid)) {
-          guestDismissed.push(abandonGid);
-          localStorage.setItem('cwf:guest_dismissed_games', JSON.stringify(guestDismissed));
+    try {
+      if (accessToken) {
+        await dismissGame(abandonGid, accessToken);
+      } else {
+        try {
+          const guestDismissed = JSON.parse(localStorage.getItem('cwf:guest_dismissed_games') || '[]');
+          if (!guestDismissed.includes(abandonGid)) {
+            guestDismissed.push(abandonGid);
+            localStorage.setItem('cwf:guest_dismissed_games', JSON.stringify(guestDismissed));
+          }
+        } catch (err) {
+          console.warn('Failed to store guest dismissed game:', err);
         }
-      } catch (err) {
-        console.warn('Failed to store guest dismissed game:', err);
       }
+      await this.loadGames(true);
+    } catch (err) {
+      console.warn('Failed to abandon game:', err);
+      Sentry.captureException(err, {extra: {phase: 'confirmAbandon', gid: abandonGid}});
+      if (priorGames) this.setState({games: priorGames});
+    } finally {
+      this.setState({abandonGid: null});
     }
-    // Re-fetch games from API (bypass browser cache to get latest list)
-    await this.loadGames(true);
-    this.setState({abandonGid: null});
   }
 
   renderMain() {
