@@ -96,7 +96,11 @@ router.get('/:userId', async (req, res, next) => {
 
     let inProgress: Awaited<ReturnType<typeof getInProgressGames>> = [];
     let snapshotStatuses: Awaited<ReturnType<typeof getAuthenticatedPuzzleStatuses>> = {};
-    let solvedPids: Awaited<ReturnType<typeof getSolvedPidsForUser>> = [];
+    // solvedPids stays undefined on failure (rather than defaulting to []) so
+    // the client can distinguish "user has zero solves" from "we couldn't
+    // fetch your solved set". An empty array would be treated as authoritative
+    // and would clobber the cached Complete badges in localStorage.
+    let solvedPids: Awaited<ReturnType<typeof getSolvedPidsForUser>> | undefined;
     if (isOwner) {
       try {
         inProgress = await getInProgressGames(userId);
@@ -115,6 +119,7 @@ router.get('/:userId', async (req, res, next) => {
       } catch (err) {
         Sentry.captureException(err);
         console.error('getSolvedPidsForUser error:', err);
+        // intentionally leave undefined — see note above
       }
     }
 
