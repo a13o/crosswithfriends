@@ -69,9 +69,11 @@ const NewPuzzleList: React.FC<NewPuzzleListProps> = (props) => {
           (stats.inProgress || []).forEach((item) => {
             if (!statuses[item.pid]) statuses[item.pid] = 'started';
           });
-          // Overlay solved from puzzle_solves (highest priority)
-          (stats.history || []).forEach((item) => {
-            statuses[item.pid] = 'solved';
+          // Overlay solved from puzzle_solves (highest priority). solvedPids is
+          // the full distinct-pid set; history is capped and was silently
+          // dropping the Complete badge for users with many solves.
+          (stats.solvedPids || []).forEach((pid) => {
+            statuses[pid] = 'solved';
           });
           updateStatuses(statuses);
         })

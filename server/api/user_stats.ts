@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
 import express from 'express';
-import {getUserSolveStats, getInProgressGames} from '../model/puzzle_solve';
+import {getUserSolveStats, getInProgressGames, getSolvedPidsForUser} from '../model/puzzle_solve';
 import {getUserById} from '../model/user';
 import {getUserUploadedPuzzles} from '../model/puzzle';
 import {getAuthenticatedPuzzleStatuses} from '../model/user_games';
@@ -44,6 +44,7 @@ const router = express.Router();
  *                 history: {type: array, items: {type: object}}
  *                 uploads: {type: array, items: {type: object}}
  *                 inProgress: {type: array, items: {type: object}, description: Only present for the profile owner}
+ *                 solvedPids: {type: array, items: {type: string}, description: "Distinct pids the user has solved. Only present for the profile owner. Used by the puzzle list to overlay the Complete badge."}
  *       404: {description: User not found}
  */
 router.get('/:userId', async (req, res, next) => {
@@ -95,6 +96,7 @@ router.get('/:userId', async (req, res, next) => {
 
     let inProgress: Awaited<ReturnType<typeof getInProgressGames>> = [];
     let snapshotStatuses: Awaited<ReturnType<typeof getAuthenticatedPuzzleStatuses>> = {};
+    let solvedPids: Awaited<ReturnType<typeof getSolvedPidsForUser>> = [];
     if (isOwner) {
       try {
         inProgress = await getInProgressGames(userId);
@@ -107,6 +109,12 @@ router.get('/:userId', async (req, res, next) => {
       } catch (err) {
         Sentry.captureException(err);
         console.error('getAuthenticatedPuzzleStatuses error:', err);
+      }
+      try {
+        solvedPids = await getSolvedPidsForUser(userId);
+      } catch (err) {
+        Sentry.captureException(err);
+        console.error('getSolvedPidsForUser error:', err);
       }
     }
 
@@ -136,6 +144,7 @@ router.get('/:userId', async (req, res, next) => {
       uploads,
       inProgress,
       snapshotStatuses,
+      solvedPids,
     });
   } catch (e) {
     next(e);
