@@ -48,14 +48,20 @@ export function resetSocket() {
 export const getSocket = () => {
   if (!websocketPromise) {
     websocketPromise = (async () => {
-      // Try WebSocket first (fastest, full-duplex) and fall back to long-
-      // polling when intermediaries strip the Upgrade headers (corporate
-      // proxies, some mobile carriers, captive portals). Without the
-      // fallback, those users silently fail to connect to multiplayer and
-      // sit on a non-functional game page. The default `upgrade: true`
-      // lets Engine.IO promote a polling connection to WebSocket on the
-      // next reconnect window if the WS path frees up.
-      const socketOptions: Record<string, any> = {transports: ['websocket', 'polling']};
+      // Start with long-polling (works on every network we care about,
+      // including ones that strip WebSocket Upgrade headers — corporate
+      // proxies, some mobile carriers, captive portals) and let Engine.IO
+      // upgrade to WebSocket once connected. This is the canonical
+      // Engine.IO transport order and the recommended approach when you
+      // care about connection reliability — it guarantees a connection
+      // for any user whose network can handle plain HTTP requests.
+      //
+      // Trade-off: ~1 extra polling round-trip on initial connect for
+      // users on healthy WS networks (most of them). The upgrade itself
+      // happens transparently and subsequent traffic is full-duplex over
+      // WS as before. Worth it to make multiplayer reachable for the
+      // tail of users behind WS-hostile intermediaries.
+      const socketOptions: Record<string, any> = {transports: ['polling', 'websocket']};
       // dfacId always travels — it's the guest identity. The server uses
       // both this and the JWT-derived userId for ban/lock checks.
       const auth = buildAuth();
