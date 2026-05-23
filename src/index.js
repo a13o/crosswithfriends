@@ -51,18 +51,52 @@ import {isMobile} from './lib/jsUtils';
 // Eager-loaded pages (critical path)
 import {Game, Room, WrappedWelcome} from './pages';
 
-// Lazy-loaded pages (loaded on demand when route is visited)
-const Account = React.lazy(() => import('./pages/Account'));
-const Fencing = React.lazy(() => import('./pages/Fencing'));
-const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
-const Help = React.lazy(() => import('./pages/Help'));
-const Play = React.lazy(() => import('./pages/Play'));
-const Privacy = React.lazy(() => import('./pages/Privacy'));
-const Profile = React.lazy(() => import('./pages/Profile'));
-const Replay = React.lazy(() => import('./pages/Replay'));
-const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
-const Terms = React.lazy(() => import('./pages/Terms'));
-const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
+// Lazy-loaded pages (loaded on demand when route is visited).
+// When a deploy ships new bundle hashes, users with a stale index.html will
+// try to fetch the previous chunk filenames and 404. Catch that case once
+// per session and force-reload to pick up the new index.html + hashes.
+const CHUNK_RELOAD_KEY = 'cwf:chunk-reload-attempted';
+const isChunkLoadError = (err) => {
+  const message = String(err?.message || err || '');
+  return (
+    /Failed to fetch dynamically imported module/i.test(message) ||
+    /error loading dynamically imported module/i.test(message) ||
+    /Importing a module script failed/i.test(message) ||
+    /Unable to preload CSS/i.test(message)
+  );
+};
+const lazyWithRetry = (importFn) =>
+  React.lazy(async () => {
+    try {
+      const mod = await importFn();
+      // Successful load — clear the flag so a *future* stale deploy can
+      // trigger another reload (otherwise we'd only ever auto-recover once
+      // per browser session).
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      return mod;
+    } catch (err) {
+      if (isChunkLoadError(err) && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+        sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+        window.location.reload();
+        // Hang the import so React doesn't render the error boundary during
+        // the reload window.
+        return new Promise(() => {});
+      }
+      throw err;
+    }
+  });
+
+const Account = lazyWithRetry(() => import('./pages/Account'));
+const Fencing = lazyWithRetry(() => import('./pages/Fencing'));
+const ForgotPassword = lazyWithRetry(() => import('./pages/ForgotPassword'));
+const Help = lazyWithRetry(() => import('./pages/Help'));
+const Play = lazyWithRetry(() => import('./pages/Play'));
+const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
+const Profile = lazyWithRetry(() => import('./pages/Profile'));
+const Replay = lazyWithRetry(() => import('./pages/Replay'));
+const ResetPassword = lazyWithRetry(() => import('./pages/ResetPassword'));
+const Terms = lazyWithRetry(() => import('./pages/Terms'));
+const VerifyEmail = lazyWithRetry(() => import('./pages/VerifyEmail'));
 import GlobalContext from './lib/GlobalContext';
 import AuthContext, {AuthProvider} from './lib/AuthContext';
 import GoogleCallback from './components/Auth/GoogleCallback';
