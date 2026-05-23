@@ -22,8 +22,14 @@ export async function createGame(
     } catch {
       // response wasn't JSON, use default message
     }
-    const err = new Error(message);
-    Sentry.captureException(err, {extra: {gid: data.gid, pid: data.pid, status: resp.status}});
+    const err = new Error(message) as Error & {rateLimited?: boolean};
+    // 429 = user mashed the create button (or hit a popular puzzle); WAI,
+    // don't pollute Sentry. Mark the error so callers can offer a softer UI.
+    if (resp.status === 429) {
+      err.rateLimited = true;
+    } else {
+      Sentry.captureException(err, {extra: {gid: data.gid, pid: data.pid, status: resp.status}});
+    }
     throw err;
   }
   return resp.json();
