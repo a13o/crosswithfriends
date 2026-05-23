@@ -44,7 +44,12 @@ export default class Welcome extends Component {
   }
 
   componentDidMount() {
-    this.navHeight = this.nav.current.getBoundingClientRect().height;
+    // Nav returns null when `hidden` is set, and ref attachment can also
+    // race with componentDidMount in dev/strict-mode double-render. Guard
+    // the deref so we don't throw a null-pointer error on the homepage.
+    if (this.nav.current) {
+      this.navHeight = this.nav.current.getBoundingClientRect().height;
+    }
   }
 
   get showingSidebar() {
