@@ -42,7 +42,16 @@ export async function createGame(
     }
     throw err;
   }
-  return resp.json();
+  try {
+    return await resp.json();
+  } catch (parseErr) {
+    // Response was 2xx but the body wasn't valid JSON (server bug, proxy
+    // mangling the response). The Play.js catch can no longer Sentry-capture
+    // because of the rateLimited shortcut, so this is the last chance to
+    // report it.
+    Sentry.captureException(parseErr, {extra: {gid: data.gid, pid: data.pid, phase: 'parse'}});
+    throw parseErr;
+  }
 }
 
 export async function dismissGame(gid: string, accessToken: string): Promise<boolean> {
