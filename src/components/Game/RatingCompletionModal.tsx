@@ -4,7 +4,7 @@ import {MdStar, MdStarBorder} from 'react-icons/md';
 import * as Sentry from '@sentry/react';
 import AuthContext from '../../lib/AuthContext';
 import LoginModal from '../Auth/LoginModal';
-import {submitPuzzleRating, RatingNotEligibleError} from '../../api/puzzle_rating';
+import {submitPuzzleRating, RatingNotEligibleError, RatingAuthError} from '../../api/puzzle_rating';
 import {formatMilliseconds} from '../Toolbar/Clock';
 import './css/RatingCompletionModal.css';
 
@@ -122,6 +122,7 @@ export default function RatingCompletionModal({
   const [submitting, setSubmitting] = useState(false);
   const [submittedRating, setSubmittedRating] = useState<number | null>(null);
   const [eligibilityError, setEligibilityError] = useState<number | null>(null);
+  const [authError, setAuthError] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   // Track previous solved state so we only open on a false→true transition.
   // Otherwise the modal would also pop on any mount where the puzzle is
@@ -132,6 +133,12 @@ export default function RatingCompletionModal({
   // (the focus-triggered onHover also fills the star). Redirect focus here
   // so Enter dismisses rather than accidentally submitting a 1-star rating.
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Clear the expired-session warning once a fresh token arrives (e.g. inline
+  // email/password re-login, which doesn't remount this component).
+  useEffect(() => {
+    setAuthError(false);
+  }, [accessToken]);
 
   useEffect(() => {
     const wasSolved = wasSolvedRef.current;
@@ -170,6 +177,7 @@ export default function RatingCompletionModal({
       if (!accessToken) return;
       setSubmitting(true);
       setEligibilityError(null);
+      setAuthError(false);
       try {
         await submitPuzzleRating(pid, rating, accessToken);
         // Persist that the user has acted on this prompt so we don't pop it
@@ -182,6 +190,12 @@ export default function RatingCompletionModal({
       } catch (err) {
         if (err instanceof RatingNotEligibleError) {
           setEligibilityError(err.thresholdPercent);
+        } else if (err instanceof RatingAuthError) {
+          // Session expired — re-prompt sign-in instead of reporting noise.
+          // writeSignInIntent so the modal re-opens after an OAuth redirect.
+          if (pid) writeSignInIntent(pid);
+          setAuthError(true);
+          setShowLogin(true);
         } else {
           Sentry.captureException(err);
         }
@@ -250,6 +264,9 @@ export default function RatingCompletionModal({
                       You need to reach {eligibilityError}% completion before rating.
                     </p>
                   )}
+                  {authError && (
+                    <p className="rating-completion--hint">Your session expired. Sign in again to rate.</p>
+                  )}
                   {/* Save Replay: only shown for signed-in users who have a snapshot
                       saved but haven't retained the replay yet. Mirrors the toolbar
                       gating in src/components/Toolbar/index.js. */}
@@ -290,7 +307,7 @@ export default function RatingCompletionModal({
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-      {!user && <LoginModal open={showLogin} onClose={handleCloseLogin} />}
+      {(!user || authError) && <LoginModal open={showLogin} onClose={handleCloseLogin} />}
     </>
   );
 }
